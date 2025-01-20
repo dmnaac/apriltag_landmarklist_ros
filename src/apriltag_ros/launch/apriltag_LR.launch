@@ -1,0 +1,31 @@
+<launch>
+
+
+	<arg name="launch_prefix" default="" /> <!-- set to value="gdbserver localhost:10000" for remote debugging -->
+
+	<!-- Set parameters -->
+
+
+	<node pkg="apriltag_ros" type="apriltag_ros_continuous_node" name="apriltag_ros_continuous_node" clear_params="true" output="screen" 
+	launch-prefix="$(arg launch_prefix)" >
+			<rosparam command="load" file="$(find tm_apriltag)/config/mLDR/settings.yaml" />
+			<rosparam command="load" file="$(find tm_apriltag)/config/mLDR/tags.yaml" />
+
+			<!-- <param name="camera_frame" type="str" value="usb_camera_L"  /> -->
+			<param name="publish_tag_detections_image" type="bool" value="false" />
+			<!-- <remap from="/tag_detections_image" to="/tag_detections_image_L" />
+			<remap from="/tag_detections" to="/tag_detections_L" /> -->
+			<remap from="image_rect" to="/cam_L/image_raw" />
+			<remap from="camera_info" to="/cam_L/camera_info" />
+			<!-- the following param cannot be dynamic changed as it only be read by init-->
+			<!-- <param name="gray_threshold" type="int" value="1" />	added in the library: continous node -->
+			<!-- 0: No threshold 1: All use threshold 2: switch grey and threshold  -->
+			<!-- <param name="use_gray_mode" type="int" value="0" /> -->
+			<param name="publish_landmarks" type="bool" value="true" />
+	</node>
+
+
+
+</launch>
+
+
