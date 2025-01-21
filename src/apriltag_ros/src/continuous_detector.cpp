@@ -141,8 +141,8 @@ namespace apriltag_ros
         landMarkEntry.id = std::to_string(item.id[0]);
         landMarkEntry.tracking_from_landmark_transform.position = item.pose.pose.pose.position;
         landMarkEntry.tracking_from_landmark_transform.orientation = item.pose.pose.pose.orientation;
-        landMarkEntry.translation_weight = 1.0;
-        landMarkEntry.rotation_weight = 1.0;
+        landMarkEntry.translation_weight = 100000.0;
+        landMarkEntry.rotation_weight = 100000.0;
 
         landMarkList.landmarks.push_back(landMarkEntry);
       }
