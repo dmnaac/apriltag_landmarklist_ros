@@ -84,6 +84,8 @@ namespace apriltag_ros
     bool refreshParamsCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
 
     bool publish_landmarks_;
+    double translation_weight_;
+    double rotation_weight_;
     AprilTagDetectionArray tag_detection_array_;
   };
 

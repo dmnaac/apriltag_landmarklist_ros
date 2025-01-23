@@ -63,7 +63,12 @@ namespace apriltag_ros
     tag_detections_publisher_ =
         nh.advertise<AprilTagDetectionArray>("tag_detections", 1);
 
-    landmarks_publisher_ = nh.advertise<cartographer_ros_msgs::LandmarkList>("landmark", 10);
+    if (publish_landmarks_)
+    {
+      landmarks_publisher_ = nh.advertise<cartographer_ros_msgs::LandmarkList>("landmark", 10);
+      translation_weight_ = getAprilTagOption<double>(pnh, "translation_weight", 1.0);
+      rotation_weight_ = getAprilTagOption<double>(pnh, "rotation_weight", 1.0);
+    }
 
     if (draw_tag_detections_image_)
     {
@@ -136,13 +141,17 @@ namespace apriltag_ros
       for (int i = 0; i < tag_detection_array_.detections.size(); i++)
       {
         AprilTagDetection item = tag_detection_array_.detections[i];
+        if (!tag_detector_->checkIDexists(item.id[0]))
+        {
+          continue;
+        }
 
         cartographer_ros_msgs::LandmarkEntry landMarkEntry;
         landMarkEntry.id = std::to_string(item.id[0]);
         landMarkEntry.tracking_from_landmark_transform.position = item.pose.pose.pose.position;
         landMarkEntry.tracking_from_landmark_transform.orientation = item.pose.pose.pose.orientation;
-        landMarkEntry.translation_weight = 100000.0;
-        landMarkEntry.rotation_weight = 100000.0;
+        landMarkEntry.translation_weight = translation_weight_;
+        landMarkEntry.rotation_weight = rotation_weight_;
 
         landMarkList.landmarks.push_back(landMarkEntry);
       }
