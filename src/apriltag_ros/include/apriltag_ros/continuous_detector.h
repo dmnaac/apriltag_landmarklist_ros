@@ -87,6 +87,7 @@ namespace apriltag_ros
     double translation_weight_;
     double rotation_weight_;
     AprilTagDetectionArray tag_detection_array_;
+    std::string tracking_frame_;
   };
 
 } // namespace apriltag_ros

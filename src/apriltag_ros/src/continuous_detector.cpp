@@ -35,6 +35,10 @@
 
 #include "cartographer_ros_msgs/LandmarkList.h"
 
+#include <tf/transform_listener.h>
+#include <tf/transform_datatypes.h>
+#include <geometry_msgs/PoseStamped.h>
+
 PLUGINLIB_EXPORT_CLASS(apriltag_ros::ContinuousDetector, nodelet::Nodelet);
 
 namespace apriltag_ros
@@ -68,6 +72,7 @@ namespace apriltag_ros
       landmarks_publisher_ = nh.advertise<cartographer_ros_msgs::LandmarkList>("landmark", 10);
       translation_weight_ = getAprilTagOption<double>(pnh, "translation_weight", 1.0);
       rotation_weight_ = getAprilTagOption<double>(pnh, "rotation_weight", 1.0);
+      tracking_frame_ = getAprilTagOption<std::string>(pnh, "tracking_frame", "base_link");
     }
 
     if (draw_tag_detections_image_)
@@ -137,6 +142,7 @@ namespace apriltag_ros
     if (publish_landmarks_)
     {
       cartographer_ros_msgs::LandmarkList landMarkList;
+      tf::TransformListener tf_listener;
 
       for (int i = 0; i < tag_detection_array_.detections.size(); i++)
       {
@@ -147,9 +153,15 @@ namespace apriltag_ros
         }
 
         cartographer_ros_msgs::LandmarkEntry landMarkEntry;
+        geometry_msgs::PoseStamped pose_relative_to_robot;
+        geometry_msgs::PoseStamped pose_relative_to_camera;
+        pose_relative_to_camera.header = item.pose.header;
+        pose_relative_to_camera.pose = item.pose.pose.pose;
+        tf_listener.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time::now(), ros::Duration(3.0));
+        tf_listener.transformPose(tracking_frame_, pose_relative_to_camera, pose_relative_to_robot);
         landMarkEntry.id = std::to_string(item.id[0]);
-        landMarkEntry.tracking_from_landmark_transform.position = item.pose.pose.pose.position;
-        landMarkEntry.tracking_from_landmark_transform.orientation = item.pose.pose.pose.orientation;
+        landMarkEntry.tracking_from_landmark_transform.position = pose_relative_to_robot.pose.position;
+        landMarkEntry.tracking_from_landmark_transform.orientation = pose_relative_to_robot.pose.orientation;
         landMarkEntry.translation_weight = translation_weight_;
         landMarkEntry.rotation_weight = rotation_weight_;
 
@@ -157,6 +169,7 @@ namespace apriltag_ros
       }
 
       landMarkList.header = tag_detection_array_.header;
+      landMarkList.header.frame_id = tracking_frame_;
       landmarks_publisher_.publish(landMarkList);
     }
 
