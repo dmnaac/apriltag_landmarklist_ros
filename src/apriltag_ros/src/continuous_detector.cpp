@@ -364,7 +364,7 @@ namespace apriltag_ros
         geometry_msgs::PoseStamped tag_pose_to_map;
         try
         {
-          tf_listener.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time::now(), ros::Duration(3.0));
+          tf_listener.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time::now(), ros::Duration(10.0));
           tf_listener.transformPose(map_frame_, it->pose, tag_pose_to_map);
         }
         catch (tf::TransformException &ex)
