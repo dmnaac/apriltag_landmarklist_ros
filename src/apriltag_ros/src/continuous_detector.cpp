@@ -271,7 +271,7 @@ namespace apriltag_ros
                 tf::Transform robotPoseToMap = cameraPoseToMap * transform_robot_camera.inverse();
 
                 geometry_msgs::PoseStamped robot_pose_to_map;
-                robot_pose_to_map.header = item.pose.header;
+                robot_pose_to_map.header = item.pose.header;                                                                                                      
                 robot_pose_to_map.pose = transformToPose(robotPoseToMap);
 
                 if (publish_robot_pose_)
