@@ -81,6 +81,16 @@ namespace apriltag_ros
       write_tags_service_ = pnh.advertiseService("write_tags", &ContinuousDetector::writeTagsServiceCallback, this);
       map_frame_ = getAprilTagOption<std::string>(pnh, "map_frame", "map");
     }
+    else
+    {
+      path_to_pose_txt_ = getAprilTagOption<std::string>(pnh, "path_to_pose_txt", "");
+      tracking_frame_ = getAprilTagOption<std::string>(pnh, "tracking_frame", "base_link");
+      publish_robot_pose_ = getAprilTagOption<bool>(pnh, "publish_robot_pose", false);
+      if (publish_robot_pose_)
+      {
+        robot_pose_publisher_ = nh.advertise<geometry_msgs::PoseStamped>("april_pose", 10);
+      }
+    }
 
     if (publish_landmarks_)
     {
@@ -115,6 +125,22 @@ namespace apriltag_ros
   {
     refreshTagParameters();
     return true;
+  }
+
+  // Convert tf::Transform to geometry_msgs::Pose
+  geometry_msgs::Pose ContinuousDetector::transformToPose(const tf::Transform &transform)
+  {
+    geometry_msgs::Pose pose;
+    tf::Vector3 translation = transform.getOrigin();
+    tf::Quaternion rotation = transform.getRotation();
+    pose.position.x = translation.x();
+    pose.position.y = translation.y();
+    pose.position.z = translation.z();
+    pose.orientation.x = rotation.x();
+    pose.orientation.y = rotation.y();
+    pose.orientation.z = rotation.z();
+    pose.orientation.w = rotation.w();
+    return pose;
   }
 
   void ContinuousDetector::imageCallback(
@@ -175,6 +201,89 @@ namespace apriltag_ros
         }
       }
     }
+    else
+    {
+      if (tag_detection_array_.detections.size() > 0)
+      {
+        std::ifstream file(path_to_pose_txt_);
+        if (!file.is_open())
+        {
+          ROS_ERROR("Failed to open the pose.txt file.");
+          return;
+        }
+
+        for (int i = 0; i < tag_detection_array_.detections.size(); i++)
+        {
+          AprilTagDetection item = tag_detection_array_.detections[i];
+          int item_id = item.id[0];
+          if (!tag_detector_->checkIDexists(item_id))
+          {
+            continue;
+          }
+
+          std::string line;
+          while (std::getline(file, line))
+          {
+            std::istringstream iss(line);
+
+            int tag_id;
+            double px, py, pz;
+            double ox, oy, oz, ow;
+
+            if (iss >> tag_id >> px >> py >> pz >> ox >> oy >> oz >> ow)
+            {
+              if (tag_id == item_id)
+              {
+                geometry_msgs::PoseStamped tag_pose_to_map;
+                geometry_msgs::PoseStamped tag_pose_to_camera;
+                geometry_msgs::PoseStamped camera_pose_to_map;
+
+                tag_pose_to_map.header = item.pose.header;
+                tag_pose_to_map.pose.position.x = px;
+                tag_pose_to_map.pose.position.y = py;
+                tag_pose_to_map.pose.position.z = pz;
+                tag_pose_to_map.pose.orientation.x = ox;
+                tag_pose_to_map.pose.orientation.y = oy;
+                tag_pose_to_map.pose.orientation.z = oz;
+                tag_pose_to_map.pose.orientation.w = ow;
+
+                tag_pose_to_camera.header = item.pose.header;
+                tag_pose_to_camera.pose = item.pose.pose.pose;
+
+                tf::Stamped<tf::Pose> tagPoseToMap, tagPoseToCamera;
+                tf::poseStampedMsgToTF(tag_pose_to_map, tagPoseToMap);
+                tf::poseStampedMsgToTF(tag_pose_to_camera, tagPoseToCamera);
+                tf::Pose cameraPoseToTag = tagPoseToCamera.inverse();
+                tf::Pose cameraPoseToMap = tagPoseToMap * cameraPoseToTag;
+
+                tf::TransformListener listener;
+                tf::StampedTransform transform_robot_camera;
+                try
+                {
+                  listener.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(3.0));
+                  listener.lookupTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), transform_robot_camera);
+                }
+                catch (tf::TransformException &ex)
+                {
+                  ROS_ERROR("%s", ex.what());
+                  return;
+                }
+                tf::Transform robotPoseToMap = cameraPoseToMap * transform_robot_camera.inverse();
+
+                geometry_msgs::PoseStamped robot_pose_to_map;
+                robot_pose_to_map.header = item.pose.header;
+                robot_pose_to_map.pose = transformToPose(robotPoseToMap);
+
+                if (publish_robot_pose_)
+                {
+                  robot_pose_publisher_.publish(robot_pose_to_map);
+                }
+              }
+            }
+          }
+        }
+      }
+    }
 
     // Publish detected tags as LandmarkList for Cartographer.
     // The cartographer_ros_msgs/LandmarkList should be provided at a sample rate comparable to the other sensors.
@@ -187,7 +296,8 @@ namespace apriltag_ros
       for (int i = 0; i < tag_detection_array_.detections.size(); i++)
       {
         AprilTagDetection item = tag_detection_array_.detections[i];
-        if (!tag_detector_->checkIDexists(item.id[0]))
+        int item_id = item.id[0];
+        if (!tag_detector_->checkIDexists(item_id))
         {
           continue;
         }
@@ -244,11 +354,11 @@ namespace apriltag_ros
 
     tf::TransformListener tf_listener;
 
-    for (const int &frame_id : tag_detector_->published_tf_id_)
+    for (const int &tag_id : tag_detector_->published_tf_id_)
     {
       auto it = std::find_if(tag_poses_to_camera_.begin(), tag_poses_to_camera_.end(),
-                             [frame_id](const TagPose2Camera &s)
-                             { return s.id == frame_id; });
+                             [tag_id](const TagPose2Camera &s)
+                             { return s.id == tag_id; });
       if (it != tag_poses_to_camera_.end())
       {
         geometry_msgs::PoseStamped tag_pose_to_map;
@@ -262,12 +372,12 @@ namespace apriltag_ros
           ROS_WARN("Transform between %s and %s not found: %s", map_frame_.c_str(), it->pose.header.frame_id.c_str(), ex.what());
           continue;
         }
-        file << frame_id << " " << tag_pose_to_map.pose.position.x << " " << tag_pose_to_map.pose.position.y << " " << tag_pose_to_map.pose.position.z << " "
+        file << tag_id << " " << tag_pose_to_map.pose.position.x << " " << tag_pose_to_map.pose.position.y << " " << tag_pose_to_map.pose.position.z << " "
              << tag_pose_to_map.pose.orientation.x << " " << tag_pose_to_map.pose.orientation.y << " " << tag_pose_to_map.pose.orientation.z << " " << tag_pose_to_map.pose.orientation.w << "\n";
       }
       else
       {
-        ROS_WARN("Cannot retrieve tag %d from detected tags", frame_id);
+        ROS_WARN("Cannot retrieve tag %d from detected tags", tag_id);
         continue;
       }
     }
