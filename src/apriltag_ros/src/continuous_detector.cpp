@@ -255,7 +255,7 @@ namespace apriltag_ros
         try
         {
           tf_listener.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time::now(), ros::Duration(3.0));
-          tf_listener.transformPose(map_frame_, it->pose.pose, tag_pose_to_map);
+          tf_listener.transformPose(map_frame_, it->pose, tag_pose_to_map);
         }
         catch (tf::TransformException &ex)
         {
