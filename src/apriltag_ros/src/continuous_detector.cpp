@@ -69,9 +69,6 @@ namespace apriltag_ros
     tag_detections_publisher_ =
         nh.advertise<AprilTagDetectionArray>("tag_detections", 1);
 
-    tf::TransformListener tf_listener;
-    tf_listener_ = tf_listener;
-
     enable_write_tags_service_ = getAprilTagOption<bool>(pnh, "enable_write_tags", false);
     if (enable_write_tags_service_)
     {
