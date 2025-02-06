@@ -408,13 +408,14 @@ namespace apriltag_ros
         geometry_msgs::PoseStamped pose;
         pose.pose = tag_detection_array.detections[i].pose.pose.pose;
         pose.header = tag_detection_array.detections[i].pose.header;
+        int tag_id = tag_detection_array.detections[i].id[0];
         tf::Stamped<tf::Transform> tag_transform;
         tf::poseStampedMsgToTF(pose, tag_transform);
         tf_pub_.sendTransform(tf::StampedTransform(tag_transform,
                                                    tag_transform.stamp_,
                                                    image->header.frame_id,
                                                    detection_names[i]));
-        checkFrameID(published_tf_id_, tag_detection_array.detections[i].id[0]);
+        checkFrameID(published_tf_id_, tag_id);
       }
     }
 

@@ -271,7 +271,7 @@ namespace apriltag_ros
                 tf::Transform robotPoseToMap = cameraPoseToMap * transform_robot_camera.inverse();
 
                 geometry_msgs::PoseStamped robot_pose_to_map;
-                robot_pose_to_map.header = item.pose.header;                                                                                                      
+                robot_pose_to_map.header = item.pose.header;
                 robot_pose_to_map.pose = transformToPose(robotPoseToMap);
 
                 if (publish_robot_pose_)
@@ -361,19 +361,23 @@ namespace apriltag_ros
                              { return s.id == tag_id; });
       if (it != tag_poses_to_camera_.end())
       {
-        geometry_msgs::PoseStamped tag_pose_to_map;
         try
         {
-          tf_listener.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time::now(), ros::Duration(10.0));
-          tf_listener.transformPose(map_frame_, it->pose, tag_pose_to_map);
+          tf::Stamped<tf::Pose> tagPoseToCamera, tagPoseToMap;
+          tf::poseStampedMsgToTF(it->pose, tagPoseToCamera);
+          tf_listener.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time::now(), ros::Duration(3.0));
+          tf_listener.transformPose(map_frame_, tagPoseToCamera, tagPoseToMap);
         }
         catch (tf::TransformException &ex)
         {
           ROS_WARN("Transform between %s and %s not found: %s", map_frame_.c_str(), it->pose.header.frame_id.c_str(), ex.what());
           continue;
         }
-        file << tag_id << " " << tag_pose_to_map.pose.position.x << " " << tag_pose_to_map.pose.position.y << " " << tag_pose_to_map.pose.position.z << " "
-             << tag_pose_to_map.pose.orientation.x << " " << tag_pose_to_map.pose.orientation.y << " " << tag_pose_to_map.pose.orientation.z << " " << tag_pose_to_map.pose.orientation.w << "\n";
+        tf::Vector3 origin = tagPoseToMap.getOrigin();
+        tf::Quaternion rotation = tagPoseToMap.getRotation();
+
+        file << tag_id << " " << origin.x() << " " << origin.y() << " " << origin.z() << " "
+             << rotation.x() << " " << rotation.y() << " " << rotation.z() << " " << rotation.w() << "\n";
       }
       else
       {
