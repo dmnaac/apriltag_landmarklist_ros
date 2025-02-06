@@ -158,9 +158,9 @@ namespace apriltag_ros
       for (int i = 0; i < tag_detection_array_.detections.size(); i++)
       {
         AprilTagDetection item = tag_detection_array_.detections[i];
-        auto it = std::find_if(tag_poses_to_camera_.begin(), tag_poses_to_camera_.end(),
-                               [item.id[0]](const TagPose2Camera &s)
-                               { return s.id == item.id[0]; });
+        int item_id = item.id[0];
+        auto it = std::find_if(tag_poses_to_camera_.begin(), tag_poses_to_camera_.end(), [item_id](const TagPose2Camera &s)
+                               { return s.id == item_id; });
         if (it != tag_poses_to_camera_.end())
         {
           it->pose.header = item.pose.header;
