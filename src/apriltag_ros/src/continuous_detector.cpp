@@ -273,6 +273,8 @@ namespace apriltag_ros
     }
 
     file.close();
+    response.write_state = 1;
+    return true;
   }
 
 } // namespace apriltag_ros
