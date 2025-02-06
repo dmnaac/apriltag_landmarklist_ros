@@ -197,8 +197,9 @@ namespace apriltag_ros
           geometry_msgs::PoseStamped pose_stamp;
           pose_stamp.header = item.pose.header;
           pose_stamp.pose = item.pose.pose.pose;
-          tag_poses_to_camera_.emplace_back(item.id[0], pose_stamp);
+          tag_poses_to_camera_.emplace_back(item_id, pose_stamp);
         }
+        ROS_INFO("Detected ID: %d", item_id);
       }
     }
     else
