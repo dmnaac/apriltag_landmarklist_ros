@@ -73,13 +73,13 @@ namespace apriltag_ros
     if (enable_write_tags_service_)
     {
       // Check if tf is published
-      if (!tag_detector_.publish_tf_)
+      if (!tag_detector_->get_publish_tf())
       {
         ROS_ERROR("publish_tf must be true to enable write_tags service.");
         return;
       }
-      write_tags_service_ = pnh.advertiseService("write_tags", writeTagsServiceCallback);
-      map_topic_ = getAprilTagOption<std::string>(pnh, "map_topic", "map");
+      write_tags_service_ = pnh.advertiseService("write_tags", &ContinuousDetector::writeTagsServiceCallback, this);
+      map_frame_ = getAprilTagOption<std::string>(pnh, "map_frame", "map");
     }
 
     if (publish_landmarks_)
@@ -161,7 +161,7 @@ namespace apriltag_ros
         auto it = std::find_if(tag_poses_to_camera_.begin(), tag_poses_to_camera_.end(),
                                [item.id[0]](const TagPose2Camera &s)
                                { return s.id == item.id[0]; });
-        if (it != tag_poses_to_camera.end())
+        if (it != tag_poses_to_camera_.end())
         {
           it->pose.header = item.pose.header;
           it->pose.pose = item.pose.pose.pose;
@@ -225,7 +225,7 @@ namespace apriltag_ros
   bool ContinuousDetector::writeTagsServiceCallback(apriltag_ros::WriteTags::Request &request, apriltag_ros::WriteTags::Response &response)
   {
     // Check if tf is published
-    if (!tag_detector_.publish_tf_)
+    if (!tag_detector_->get_publish_tf())
     {
       ROS_ERROR("WriteTags service needs published tf.");
       response.write_state = 0;
@@ -244,16 +244,16 @@ namespace apriltag_ros
 
     tf::TransformListener tf_listener;
 
-    for (const int &frame_id : tag_detector_.published_tf_id_)
+    for (const int &frame_id : tag_detector_->published_tf_id_)
     {
       auto it = std::find_if(tag_poses_to_camera_.begin(), tag_poses_to_camera_.end(),
                              [frame_id](const TagPose2Camera &s)
                              { return s.id == frame_id; });
-      if (it != tag_poses_to_camera.end())
+      if (it != tag_poses_to_camera_.end())
       {
+        geometry_msgs::PoseStamped tag_pose_to_map;
         try
         {
-          geometry_msgs::PoseStamped tag_pose_to_map;
           tf_listener.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time::now(), ros::Duration(3.0));
           tf_listener.transformPose(map_frame_, it->pose.pose, tag_pose_to_map);
         }
