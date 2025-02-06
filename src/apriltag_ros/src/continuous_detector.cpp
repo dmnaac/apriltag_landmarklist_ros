@@ -367,17 +367,16 @@ namespace apriltag_ros
           tf::poseStampedMsgToTF(it->pose, tagPoseToCamera);
           tf_listener.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time::now(), ros::Duration(3.0));
           tf_listener.transformPose(map_frame_, tagPoseToCamera, tagPoseToMap);
+          tf::Vector3 origin = tagPoseToMap.getOrigin();
+          tf::Quaternion rotation = tagPoseToMap.getRotation();
+          file << tag_id << " " << origin.x() << " " << origin.y() << " " << origin.z() << " "
+               << rotation.x() << " " << rotation.y() << " " << rotation.z() << " " << rotation.w() << "\n";
         }
         catch (tf::TransformException &ex)
         {
           ROS_WARN("Transform between %s and %s not found: %s", map_frame_.c_str(), it->pose.header.frame_id.c_str(), ex.what());
           continue;
         }
-        tf::Vector3 origin = tagPoseToMap.getOrigin();
-        tf::Quaternion rotation = tagPoseToMap.getRotation();
-
-        file << tag_id << " " << origin.x() << " " << origin.y() << " " << origin.z() << " "
-             << rotation.x() << " " << rotation.y() << " " << rotation.z() << " " << rotation.w() << "\n";
       }
       else
       {
