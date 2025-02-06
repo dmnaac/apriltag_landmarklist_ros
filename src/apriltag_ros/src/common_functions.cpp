@@ -42,6 +42,8 @@
 #include "tagCircle21h7.h"
 #include "tagCircle49h12.h"
 
+#include <algorithm>
+
 namespace apriltag_ros
 {
 
@@ -204,6 +206,15 @@ namespace apriltag_ros
     else if (family_ == "tagCircle49h12")
     {
       tagCircle49h12_destroy(tf_);
+    }
+  }
+
+  void TagDetector::checkFrameID(std::vector<int> &published_tf_id, const int &frame_id)
+  {
+    if (std::find(published_tf_id.begin(), published_tf_id.end(), frame_id) == published_tf_id.end())
+    {
+      // If not found, push it into the vector
+      published_tf_id.push_back(frame_id);
     }
   }
 
@@ -403,6 +414,7 @@ namespace apriltag_ros
                                                    tag_transform.stamp_,
                                                    image->header.frame_id,
                                                    detection_names[i]));
+        checkFrameID(published_tf_id_, tag_detection_array.detections[i].id[0]);
       }
     }
 

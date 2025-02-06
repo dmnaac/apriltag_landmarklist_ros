@@ -44,6 +44,7 @@
 #define APRILTAG_ROS_CONTINUOUS_DETECTOR_H
 
 #include "apriltag_ros/common_functions.h"
+#include "apriltag_ros/WriteTags.h"
 
 #include <memory>
 #include <mutex>
@@ -51,6 +52,7 @@
 #include <nodelet/nodelet.h>
 #include <ros/service_server.h>
 #include <std_srvs/Empty.h>
+#include <geometry_msgs/Pose.h>
 
 namespace apriltag_ros
 {
@@ -69,6 +71,14 @@ namespace apriltag_ros
     void refreshTagParameters();
 
   private:
+    struct TagPose2Camera
+    {
+      int id;
+      geometry_msgs::PoseStamped pose;
+
+      TagPose2Camera(int new_id, geometry_msgs::PoseStamped new_pose) : id(new_id), pose(new_pose) {}
+    };
+
     std::mutex detection_mutex_;
     std::shared_ptr<TagDetector> tag_detector_;
     bool draw_tag_detections_image_;
@@ -88,6 +98,13 @@ namespace apriltag_ros
     double rotation_weight_;
     AprilTagDetectionArray tag_detection_array_;
     std::string tracking_frame_;
+
+    bool enable_write_tags_service_;
+    ros::ServiceServer write_tags_service_;
+    std::string map_frame_;
+    bool writeTagsServiceCallback(apriltag_ros::WriteTags::Request &request, apriltag_ros::WriteTags::Response &response);
+
+    std::vector<TagPose2Camera> tag_poses_to_camera_;
   };
 
 } // namespace apriltag_ros

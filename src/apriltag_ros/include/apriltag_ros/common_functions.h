@@ -189,6 +189,8 @@ namespace apriltag_ros
     bool publish_tf_;
     tf::TransformBroadcaster tf_pub_;
 
+    void checkFrameID(std::vector<int> &published_tf_id, const int &frame_id);
+
   public:
     TagDetector(ros::NodeHandle pnh);
     ~TagDetector();
@@ -239,6 +241,8 @@ namespace apriltag_ros
     void drawDetections(cv_bridge::CvImagePtr image);
 
     bool get_publish_tf() const { return publish_tf_; }
+
+    std::vector<int> published_tf_id_;
   };
 
 } // namespace apriltag_ros

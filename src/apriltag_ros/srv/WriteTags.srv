@@ -1,0 +1,13 @@
+# Service which takes in:
+#
+#   file_directory : full path to the folder where the file is saved
+#   file_basename  : filename without extension
+#
+# and returns:
+#
+#  write_state : if the file is saved successfully or not, 0 - fail, 1 - success
+
+string file_directory
+string file_basename
+---
+int32 write_state
