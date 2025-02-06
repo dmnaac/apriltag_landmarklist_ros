@@ -109,6 +109,7 @@ namespace apriltag_ros
     std::string path_to_pose_txt_;
     bool publish_robot_pose_;
 
+    tf::TransformListener tf_listener_;
     geometry_msgs::Pose transformToPose(const tf::Transform &transform);
   };
 

@@ -69,6 +69,9 @@ namespace apriltag_ros
     tag_detections_publisher_ =
         nh.advertise<AprilTagDetectionArray>("tag_detections", 1);
 
+    tf::TransformListener tf_listener;
+    tf_listener_ = tf_listener;
+
     enable_write_tags_service_ = getAprilTagOption<bool>(pnh, "enable_write_tags", false);
     if (enable_write_tags_service_)
     {
@@ -257,12 +260,11 @@ namespace apriltag_ros
                 tf::Pose cameraPoseToTag = tagPoseToCamera.inverse();
                 tf::Pose cameraPoseToMap = tagPoseToMap * cameraPoseToTag;
 
-                tf::TransformListener listener;
                 tf::StampedTransform transform_robot_camera;
                 try
                 {
-                  listener.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(3.0));
-                  listener.lookupTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), transform_robot_camera);
+                  tf_listener_.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(3.0));
+                  tf_listener_.lookupTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), transform_robot_camera);
                 }
                 catch (tf::TransformException &ex)
                 {
@@ -292,7 +294,6 @@ namespace apriltag_ros
     if (publish_landmarks_)
     {
       cartographer_ros_msgs::LandmarkList landMarkList;
-      tf::TransformListener tf_listener;
 
       for (int i = 0; i < tag_detection_array_.detections.size(); i++)
       {
@@ -308,8 +309,8 @@ namespace apriltag_ros
         geometry_msgs::PoseStamped pose_relative_to_camera;
         pose_relative_to_camera.header = item.pose.header;
         pose_relative_to_camera.pose = item.pose.pose.pose;
-        tf_listener.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time::now(), ros::Duration(3.0));
-        tf_listener.transformPose(tracking_frame_, pose_relative_to_camera, pose_relative_to_robot);
+        tf_listener_.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time::now(), ros::Duration(3.0));
+        tf_listener_.transformPose(tracking_frame_, pose_relative_to_camera, pose_relative_to_robot);
         landMarkEntry.id = std::to_string(item.id[0]);
         landMarkEntry.tracking_from_landmark_transform.position = pose_relative_to_robot.pose.position;
         landMarkEntry.tracking_from_landmark_transform.orientation = pose_relative_to_robot.pose.orientation;
@@ -353,8 +354,6 @@ namespace apriltag_ros
       return false;
     }
 
-    tf::TransformListener tf_listener;
-
     for (const int &tag_id : tag_detector_->published_tf_id_)
     {
       auto it = std::find_if(tag_poses_to_camera_.begin(), tag_poses_to_camera_.end(),
@@ -366,8 +365,8 @@ namespace apriltag_ros
         {
           tf::Stamped<tf::Pose> tagPoseToCamera, tagPoseToMap;
           tf::poseStampedMsgToTF(it->pose, tagPoseToCamera);
-          tf_listener.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time::now(), ros::Duration(3.0));
-          tf_listener.transformPose(map_frame_, tagPoseToCamera, tagPoseToMap);
+          tf_listener_.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time::now(), ros::Duration(3.0));
+          tf_listener_.transformPose(map_frame_, tagPoseToCamera, tagPoseToMap);
           tf::Vector3 origin = tagPoseToMap.getOrigin();
           tf::Quaternion rotation = tagPoseToMap.getRotation();
           file << tag_id << " " << origin.x() << " " << origin.y() << " " << origin.z() << " "
