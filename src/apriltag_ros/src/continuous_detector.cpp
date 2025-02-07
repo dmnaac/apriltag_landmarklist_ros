@@ -187,8 +187,8 @@ namespace apriltag_ros
         int item_id = item.id[0];
 
         geometry_msgs::PoseStamped pose;
-        pose.pose = tag_detection_array.detections[i].pose.pose.pose;
-        pose.header = tag_detection_array.detections[i].pose.header;
+        pose.pose = item.pose.pose.pose;
+        pose.header = item.pose.header;
         tf::Stamped<tf::Transform> tag_transform;
         tf::poseStampedMsgToTF(pose, tag_transform);
         tf::Transform tagPoseToMap;
