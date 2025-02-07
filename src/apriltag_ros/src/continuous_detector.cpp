@@ -185,13 +185,7 @@ namespace apriltag_ros
       {
         AprilTagDetection item = tag_detection_array_.detections[i];
         int item_id = item.id[0];
-
-        geometry_msgs::PoseStamped pose;
-        pose.pose = item.pose.pose.pose;
-        pose.header = item.pose.header;
-        tf::Stamped<tf::Transform> tag_transform;
-        tf::poseStampedMsgToTF(pose, tag_transform);
-        tf::Transform tagPoseToMap;
+        std::string tag_frame = "tag_" + std::to_string(item_id);
 
         auto it = std::find_if(tag_poses_to_map_.begin(), tag_poses_to_map_.end(), [item_id](const TagPose2Map &s)
                                { return s.id == item_id; });
@@ -199,19 +193,17 @@ namespace apriltag_ros
         {
           try
           {
-            tf_listener_.waitForTransform(map_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(5.0));
-            tf_listener_.lookupTransform(map_frame_, item.pose.header.frame_id, ros::Time(0), transform_cameraToMap_);
+            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
+            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap_);
           }
           catch (const std::exception &ex)
           {
-            ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), item.pose.header.frame_id.c_str(), ex.what());
+            ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
             continue;
           }
 
-          tagPoseToMap = tag_transform * transform_cameraToMap_;
-
-          tf::Vector3 translation = tagPoseToMap.getOrigin();
-          tf::Quaternion rotation = tagPoseToMap.getRotation();
+          tf::Vector3 translation = transform_tagToMap_.getOrigin();
+          tf::Quaternion rotation = transform_tagToMap_.getRotation();
 
           it->pose.header = item.pose.header;
           it->pose.header.frame_id = map_frame_;
@@ -227,19 +219,17 @@ namespace apriltag_ros
         {
           try
           {
-            tf_listener_.waitForTransform(map_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(5.0));
-            tf_listener_.lookupTransform(map_frame_, item.pose.header.frame_id, ros::Time(0), transform_cameraToMap_);
+            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
+            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap_);
           }
           catch (const std::exception &ex)
           {
-            ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), item.pose.header.frame_id.c_str(), ex.what());
+            ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
             continue;
           }
 
-          tagPoseToMap = tag_transform * transform_cameraToMap_;
-
-          tf::Vector3 translation = tagPoseToMap.getOrigin();
-          tf::Quaternion rotation = tagPoseToMap.getRotation();
+          tf::Vector3 translation = transform_tagToMap_.getOrigin();
+          tf::Quaternion rotation = transform_tagToMap_.getRotation();
 
           geometry_msgs::PoseStamped pose_stamp;
           pose_stamp.header = item.pose.header;
