@@ -185,7 +185,13 @@ namespace apriltag_ros
       {
         AprilTagDetection item = tag_detection_array_.detections[i];
         int item_id = item.id[0];
-        std::string tag_frame = "tag_" + std::to_string(item_id);
+
+        geometry_msgs::PoseStamped pose;
+        pose.pose = tag_detection_array.detections[i].pose.pose.pose;
+        pose.header = tag_detection_array.detections[i].pose.header;
+        tf::Stamped<tf::Transform> tag_transform;
+        tf::poseStampedMsgToTF(pose, tag_transform);
+        tf::Transform tagPoseToMap;
 
         auto it = std::find_if(tag_poses_to_map_.begin(), tag_poses_to_map_.end(), [item_id](const TagPose2Map &s)
                                { return s.id == item_id; });
@@ -193,8 +199,8 @@ namespace apriltag_ros
         {
           try
           {
-            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(0.2));
-            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap_);
+            tf_listener_.waitForTransform(map_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(5.0));
+            tf_listener_.lookupTransform(map_frame_, item.pose.header.frame_id, ros::Time(0), transform_cameraToMap_);
           }
           catch (const std::exception &ex)
           {
@@ -202,8 +208,10 @@ namespace apriltag_ros
             continue;
           }
 
-          tf::Vector3 translation = transform_tagToMap_.getOrigin();
-          tf::Quaternion rotation = transform_tagToMap_.getRotation();
+          tagPoseToMap = tag_transform * transform_cameraToMap_;
+
+          tf::Vector3 translation = tagPoseToMap.getOrigin();
+          tf::Quaternion rotation = tagPoseToMap.getRotation();
 
           it->pose.header = item.pose.header;
           it->pose.header.frame_id = map_frame_;
@@ -219,8 +227,8 @@ namespace apriltag_ros
         {
           try
           {
-            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(0.2));
-            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap_);
+            tf_listener_.waitForTransform(map_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(5.0));
+            tf_listener_.lookupTransform(map_frame_, item.pose.header.frame_id, ros::Time(0), transform_cameraToMap_);
           }
           catch (const std::exception &ex)
           {
@@ -228,8 +236,10 @@ namespace apriltag_ros
             continue;
           }
 
-          tf::Vector3 translation = transform_tagToMap_.getOrigin();
-          tf::Quaternion rotation = transform_tagToMap_.getRotation();
+          tagPoseToMap = tag_transform * transform_cameraToMap_;
+
+          tf::Vector3 translation = tagPoseToMap.getOrigin();
+          tf::Quaternion rotation = tagPoseToMap.getRotation();
 
           geometry_msgs::PoseStamped pose_stamp;
           pose_stamp.header = item.pose.header;
