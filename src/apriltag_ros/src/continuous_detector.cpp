@@ -379,8 +379,8 @@ namespace apriltag_ros
         tf::poseStampedMsgToTF(it->pose, tagPoseToCamera);
         try
         {
-          tf_listener_.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time::now(), ros::Duration(3.0));
-          tf_listener_.lookupTransform(map_frame_, it->pose.header.frame_id, ros::Time::now(), transform_cameraToMap);
+          tf_listener_.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time(), ros::Duration(3.0));
+          tf_listener_.lookupTransform(map_frame_, it->pose.header.frame_id, ros::Time(), transform_cameraToMap);
         }
         catch (tf::TransformException &ex)
         {
