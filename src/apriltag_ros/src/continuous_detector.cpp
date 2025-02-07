@@ -358,7 +358,8 @@ namespace apriltag_ros
                              { return s.id == tag_id; });
       if (it != tag_poses_to_camera_.end())
       {
-        tf::Stamped<tf::Pose> tagPoseToCamera, tagPoseToMap;
+        tf::Stamped<tf::Pose> tagPoseToCamera;
+        tf::StampedTransform tagPoseToMap;
         tf::StampedTransform transform_cameraToMap;
         tf::poseStampedMsgToTF(it->pose, tagPoseToCamera);
         try
