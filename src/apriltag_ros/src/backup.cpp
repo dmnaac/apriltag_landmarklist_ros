@@ -9,8 +9,8 @@ if (it != tag_poses_to_camera_.end())
     tf::poseStampedMsgToTF(it->pose, tagPoseToCamera);
     try
     {
-        tf_listener_.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time(), ros::Duration(3.0));
-        tf_listener_.lookupTransform(map_frame_, it->pose.header.frame_id, ros::Time(), transform_cameraToMap);
+        tf_listener_.waitForTransform(map_frame_, it->pose.header.frame_id, ros::Time(0), ros::Duration(3.0));
+        tf_listener_.lookupTransform(map_frame_, it->pose.header.frame_id, ros::Time(0), transform_cameraToMap);
     }
     catch (tf::TransformException &ex)
     {
@@ -28,4 +28,27 @@ else
 {
     ROS_WARN("Cannot retrieve tag %d from detected tags", tag_id);
     continue;
+}
+
+for (const int &tag_id : tag_detector_->published_tf_id_)
+{
+    std::string tag_frame = "tag_" + std::to_string(tag_id);
+    tf::StampedTransform transform_tagToMap;
+
+    try
+    {
+        tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
+        tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap);
+    }
+    catch (const std::exception &ex)
+    {
+        ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
+        continue;
+    }
+
+    tf::Vector3 translation = transform_tagToMap.getOrigin();
+    tf::Quaternion rotation = transform_tagToMap.getRotation();
+
+    file << tag_id << " " << translation.x() << " " << translation.y() << " " << translation.z() << " "
+         << rotation.x() << " " << rotation.y() << " " << rotation.z() << " " << rotation.w() << "\n";
 }

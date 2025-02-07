@@ -81,6 +81,14 @@ namespace apriltag_ros
       TagPose2Camera(int new_id, geometry_msgs::PoseStamped new_pose) : id(new_id), pose(new_pose) {}
     };
 
+    struct TagPose2Map
+    {
+      int id;
+      geometry_msgs::PoseStamped pose;
+
+      TagPose2Map(int new_id, geometry_msgs::PoseStamped new_pose) : id(new_id), pose(new_pose) {}
+    };
+
     std::mutex detection_mutex_;
     std::shared_ptr<TagDetector> tag_detector_;
     bool draw_tag_detections_image_;
@@ -108,6 +116,7 @@ namespace apriltag_ros
     bool writeTagsServiceCallback(apriltag_ros::WriteTags::Request &request, apriltag_ros::WriteTags::Response &response);
 
     std::vector<TagPose2Camera> tag_poses_to_camera_;
+    std::vector<TagPose2Map> tag_poses_to_map_;
     std::string path_to_pose_txt_;
     bool publish_robot_pose_;
 

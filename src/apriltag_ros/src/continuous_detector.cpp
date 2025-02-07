@@ -185,19 +185,64 @@ namespace apriltag_ros
       {
         AprilTagDetection item = tag_detection_array_.detections[i];
         int item_id = item.id[0];
-        auto it = std::find_if(tag_poses_to_camera_.begin(), tag_poses_to_camera_.end(), [item_id](const TagPose2Camera &s)
+        std::string tag_frame = "tag_" + std::to_string(item_id);
+        tf::StampedTransform transform_tagToMap;
+        auto it = std::find_if(tag_poses_to_map_.begin(), tag_poses_to_map_.end(), [item_id](const TagPose2Map &s)
                                { return s.id == item_id; });
-        if (it != tag_poses_to_camera_.end())
+        if (it != tag_poses_to_map_.end())
         {
+          try
+          {
+            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
+            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap);
+          }
+          catch (const std::exception &ex)
+          {
+            ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
+            continue;
+          }
+
+          tf::Vector3 translation = transform_tagToMap.getOrigin();
+          tf::Quaternion rotation = transform_tagToMap.getRotation();
+
           it->pose.header = item.pose.header;
-          it->pose.pose = item.pose.pose.pose;
+          it->pose.header.frame_id = map_frame_;
+          it->pose.pose.position.x = translation.x();
+          it->pose.pose.position.y = translation.y();
+          it->pose.pose.position.z = translation.z();
+          it->pose.pose.orientation.x = rotation.x();
+          it->pose.pose.orientation.y = rotation.y();
+          it->pose.pose.orientation.z = rotation.z();
+          it->pose.pose.orientation.w = rotation.w();
         }
         else
         {
+          try
+          {
+            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
+            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap);
+          }
+          catch (const std::exception &ex)
+          {
+            ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
+            continue;
+          }
+
+          tf::Vector3 translation = transform_tagToMap.getOrigin();
+          tf::Quaternion rotation = transform_tagToMap.getRotation();
+
           geometry_msgs::PoseStamped pose_stamp;
           pose_stamp.header = item.pose.header;
-          pose_stamp.pose = item.pose.pose.pose;
-          tag_poses_to_camera_.emplace_back(item_id, pose_stamp);
+          pose_stamp.header.frame_id = map_frame_;
+          pose_stamp.pose.position.x = translation.x();
+          pose_stamp.pose.position.y = translation.y();
+          pose_stamp.pose.position.z = translation.z();
+          pose_stamp.pose.orientation.x = rotation.x();
+          pose_stamp.pose.orientation.y = rotation.y();
+          pose_stamp.pose.orientation.z = rotation.z();
+          pose_stamp.pose.orientation.w = rotation.w();
+
+          tag_poses_to_map_.emplace_back(item_id, pose_stamp);
         }
         // ROS_INFO("Detected ID: %d", item_id);
       }
@@ -368,34 +413,17 @@ namespace apriltag_ros
       return false;
     }
 
-    if (!tag_detector_->published_tf_id_.size() > 0)
+    if (!tag_poses_to_map_.size() > 0)
     {
       response.write_state = 0;
       ROS_ERROR("Not found transform between %s and any tag: saving failed.", map_frame_.c_str());
       return false;
     }
 
-    for (const int &tag_id : tag_detector_->published_tf_id_)
+    for (const TagPose2Map &item : tag_poses_to_map_)
     {
-      std::string tag_frame = "tag_" + std::to_string(tag_id);
-      tf::StampedTransform transform_tagToMap;
-
-      try
-      {
-        tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
-        tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap);
-      }
-      catch (const std::exception &ex)
-      {
-        ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
-        continue;
-      }
-
-      tf::Vector3 translation = transform_tagToMap.getOrigin();
-      tf::Quaternion rotation = transform_tagToMap.getRotation();
-
-      file << tag_id << " " << translation.x() << " " << translation.y() << " " << translation.z() << " "
-           << rotation.x() << " " << rotation.y() << " " << rotation.z() << " " << rotation.w() << "\n";
+      file << item.id << " " << item.pose.position.x << " " << item.pose.position.y << " " << item.pose.position.z << " "
+           << item.pose.orientation.x << " " << item.pose.orientation.y << " " << item.pose.orientation.z << " " << item.pose.orientation.w << "\n";
     }
 
     file.close();
