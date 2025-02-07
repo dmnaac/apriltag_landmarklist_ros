@@ -121,6 +121,7 @@ namespace apriltag_ros
     bool publish_robot_pose_;
 
     tf::TransformListener tf_listener_;
+    tf::StampedTransform transform_tagToMap_;
     geometry_msgs::Pose transformToPose(const tf::Transform &transform);
   };
 

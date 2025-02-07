@@ -186,15 +186,15 @@ namespace apriltag_ros
         AprilTagDetection item = tag_detection_array_.detections[i];
         int item_id = item.id[0];
         std::string tag_frame = "tag_" + std::to_string(item_id);
-        tf::StampedTransform transform_tagToMap;
+
         auto it = std::find_if(tag_poses_to_map_.begin(), tag_poses_to_map_.end(), [item_id](const TagPose2Map &s)
                                { return s.id == item_id; });
         if (it != tag_poses_to_map_.end())
         {
-          tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
           try
           {
-            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap);
+            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
+            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap_);
           }
           catch (const std::exception &ex)
           {
@@ -202,8 +202,8 @@ namespace apriltag_ros
             continue;
           }
 
-          tf::Vector3 translation = transform_tagToMap.getOrigin();
-          tf::Quaternion rotation = transform_tagToMap.getRotation();
+          tf::Vector3 translation = transform_tagToMap_.getOrigin();
+          tf::Quaternion rotation = transform_tagToMap_.getRotation();
 
           it->pose.header = item.pose.header;
           it->pose.header.frame_id = map_frame_;
@@ -217,10 +217,10 @@ namespace apriltag_ros
         }
         else
         {
-          tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
           try
           {
-            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap);
+            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
+            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap_);
           }
           catch (const std::exception &ex)
           {
@@ -228,8 +228,8 @@ namespace apriltag_ros
             continue;
           }
 
-          tf::Vector3 translation = transform_tagToMap.getOrigin();
-          tf::Quaternion rotation = transform_tagToMap.getRotation();
+          tf::Vector3 translation = transform_tagToMap_.getOrigin();
+          tf::Quaternion rotation = transform_tagToMap_.getRotation();
 
           geometry_msgs::PoseStamped pose_stamp;
           pose_stamp.header = item.pose.header;
