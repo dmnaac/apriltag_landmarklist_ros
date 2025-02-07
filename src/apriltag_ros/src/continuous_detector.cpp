@@ -70,6 +70,7 @@ namespace apriltag_ros
         nh.advertise<AprilTagDetectionArray>("tag_detections", 1);
 
     enable_write_tags_service_ = getAprilTagOption<bool>(pnh, "enable_write_tags", false);
+    map_frame_ = getAprilTagOption<std::string>(pnh, "map_frame", "map");
     if (enable_write_tags_service_)
     {
       // Check if tf is published
@@ -79,7 +80,6 @@ namespace apriltag_ros
         return;
       }
       write_tags_service_ = pnh.advertiseService("write_tags", &ContinuousDetector::writeTagsServiceCallback, this);
-      map_frame_ = getAprilTagOption<std::string>(pnh, "map_frame", "map");
     }
     else
     {
@@ -240,6 +240,7 @@ namespace apriltag_ros
                 geometry_msgs::PoseStamped camera_pose_to_map;
 
                 tag_pose_to_map.header = item.pose.header;
+                tag_pose_to_map.header.frame_id = map_frame_;
                 tag_pose_to_map.pose.position.x = px;
                 tag_pose_to_map.pose.position.y = py;
                 tag_pose_to_map.pose.position.z = pz;
@@ -260,18 +261,19 @@ namespace apriltag_ros
                 tf::StampedTransform transform_cameraToRobot;
                 try
                 {
-                  tf_listener_.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(3.0));
-                  tf_listener_.lookupTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), transform_cameraToRobot);
+                  tf_listener_.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(), ros::Duration(3.0));
+                  tf_listener_.lookupTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(), transform_cameraToRobot);
                 }
                 catch (tf::TransformException &ex)
                 {
-                  ROS_ERROR("%s", ex.what());
+                  ROS_ERROR("Transform between %s and %s : %s", tracking_frame_.c_str(), item.pose.header.frame_id.c_str(), ex.what());
                   return;
                 }
                 tf::Transform robotPoseToMap = cameraPoseToMap * transform_cameraToRobot.inverse();
 
                 geometry_msgs::PoseStamped robot_pose_to_map;
                 robot_pose_to_map.header = item.pose.header;
+                robot_pose_to_map.header.frame_id = map_frame_;
                 robot_pose_to_map.pose = transformToPose(robotPoseToMap);
 
                 if (publish_robot_pose_)
