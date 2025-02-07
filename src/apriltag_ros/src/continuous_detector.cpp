@@ -193,8 +193,8 @@ namespace apriltag_ros
         {
           try
           {
-            tf_listener_.waitForTransform("map", tag_frame, ros::Time(0), ros::Duration(3.0));
-            tf_listener_.lookupTransform("map", tag_frame, ros::Time(0), transform_tagToMap_);
+            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(5.0));
+            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap_);
           }
           catch (const std::exception &ex)
           {
@@ -219,8 +219,8 @@ namespace apriltag_ros
         {
           try
           {
-            tf_listener_.waitForTransform("map", tag_frame, ros::Time(0), ros::Duration(3.0));
-            tf_listener_.lookupTransform("map", tag_frame, ros::Time(0), transform_tagToMap_);
+            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(5.0));
+            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap_);
           }
           catch (const std::exception &ex)
           {
