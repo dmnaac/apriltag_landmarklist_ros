@@ -422,8 +422,8 @@ namespace apriltag_ros
 
     for (const TagPose2Map &item : tag_poses_to_map_)
     {
-      file << item.id << " " << item.pose.position.x << " " << item.pose.position.y << " " << item.pose.position.z << " "
-           << item.pose.orientation.x << " " << item.pose.orientation.y << " " << item.pose.orientation.z << " " << item.pose.orientation.w << "\n";
+      file << item.id << " " << item.pose.pose.position.x << " " << item.pose.pose.position.y << " " << item.pose.pose.position.z << " "
+           << item.pose.pose.orientation.x << " " << item.pose.pose.orientation.y << " " << item.pose.pose.orientation.z << " " << item.pose.pose.orientation.w << "\n";
     }
 
     file.close();
