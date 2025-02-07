@@ -385,7 +385,7 @@ namespace apriltag_ros
         tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(), ros::Duration(3.0));
         tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(), transform_tagToMap);
       }
-      catch (const std::exception &e)
+      catch (const std::exception &ex)
       {
         ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
         continue;
