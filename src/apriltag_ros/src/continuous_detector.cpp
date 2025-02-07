@@ -191,9 +191,9 @@ namespace apriltag_ros
                                { return s.id == item_id; });
         if (it != tag_poses_to_map_.end())
         {
+          tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
           try
           {
-            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
             tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap);
           }
           catch (const std::exception &ex)
@@ -217,9 +217,9 @@ namespace apriltag_ros
         }
         else
         {
+          tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
           try
           {
-            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
             tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap);
           }
           catch (const std::exception &ex)
