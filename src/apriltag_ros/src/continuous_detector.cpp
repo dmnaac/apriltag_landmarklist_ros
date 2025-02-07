@@ -313,7 +313,7 @@ namespace apriltag_ros
         tf::poseStampedMsgToTF(pose_relative_to_camera, tagPoseToCamera);
         try
         {
-          tf_listener_.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(3.0));
+          tf_listener_.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(), ros::Duration(3.0));
           tf_listener_.transformPose(tracking_frame_, tagPoseToCamera, tagPoseToRobot);
         }
         catch (tf::TransformException &ex)
@@ -321,7 +321,7 @@ namespace apriltag_ros
           ROS_ERROR("Transform between %s and %s : %s", tracking_frame_.c_str(), item.pose.header.frame_id.c_str(), ex.what());
         }
 
-        tf::poseStampedTFToMsg(tagPoseToRobot, pose_relative_to_camera);
+        tf::poseStampedTFToMsg(tagPoseToRobot, pose_relative_to_robot);
 
         landMarkEntry.id = std::to_string(item_id);
         landMarkEntry.tracking_from_landmark_transform.position = pose_relative_to_robot.pose.position;
