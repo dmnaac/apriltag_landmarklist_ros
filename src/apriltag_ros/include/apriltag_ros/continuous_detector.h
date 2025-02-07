@@ -103,26 +103,27 @@ namespace apriltag_ros
 
     ros::ServiceServer refresh_params_service_;
     bool refreshParamsCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
+    ros::ServiceServer write_tags_service_;
+    bool writeTagsServiceCallback(apriltag_ros::WriteTags::Request &request, apriltag_ros::WriteTags::Response &response);
 
+    geometry_msgs::Pose transformToPose(const tf::Transform &transform);
+
+  public:
     bool publish_landmarks_;
     double translation_weight_;
     double rotation_weight_;
-    AprilTagDetectionArray tag_detection_array_;
+
     std::string tracking_frame_;
-
-    bool enable_write_tags_service_;
-    ros::ServiceServer write_tags_service_;
     std::string map_frame_;
-    bool writeTagsServiceCallback(apriltag_ros::WriteTags::Request &request, apriltag_ros::WriteTags::Response &response);
-
     std::vector<TagPose2Camera> tag_poses_to_camera_;
     std::vector<TagPose2Map> tag_poses_to_map_;
     std::string path_to_pose_txt_;
     bool publish_robot_pose_;
+    bool enable_write_tags_service_;
 
+    AprilTagDetectionArray tag_detection_array_;
     tf::TransformListener tf_listener_;
     tf::StampedTransform transform_tagToMap_;
-    geometry_msgs::Pose transformToPose(const tf::Transform &transform);
   };
 
 } // namespace apriltag_ros
