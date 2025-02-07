@@ -204,7 +204,7 @@ namespace apriltag_ros
           }
           catch (const std::exception &ex)
           {
-            ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
+            ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), item.pose.header.frame_id.c_str(), ex.what());
             continue;
           }
 
@@ -232,7 +232,7 @@ namespace apriltag_ros
           }
           catch (const std::exception &ex)
           {
-            ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
+            ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), item.pose.header.frame_id.c_str(), ex.what());
             continue;
           }
 
