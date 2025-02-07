@@ -124,6 +124,7 @@ namespace apriltag_ros
     AprilTagDetectionArray tag_detection_array_;
     tf::TransformListener tf_listener_;
     tf::StampedTransform transform_tagToMap_;
+    tf::StampedTransform transform_cameraToRobot_;
   };
 
 } // namespace apriltag_ros

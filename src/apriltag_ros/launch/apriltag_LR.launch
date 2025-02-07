@@ -30,6 +30,7 @@
 		<param name="tracking_frame" type="string" value="base_footprint" />
 
 		<!-- Parameters for saving poses of tags relative to map_frame -->
+		<!-- When using landmarks for cartographer_ros, the "collate_landmarks" should be set to false. -->
 		<param name="map_frame" type="string" value="map" />
 		<param name="enable_write_tags" type="bool" value="true" />
 

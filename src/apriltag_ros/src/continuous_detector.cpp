@@ -185,6 +185,12 @@ namespace apriltag_ros
       {
         AprilTagDetection item = tag_detection_array_.detections[i];
         int item_id = item.id[0];
+
+        if (!tag_detector_->checkIDexists(item_id))
+        {
+          continue;
+        }
+
         std::string tag_frame = "tag_" + std::to_string(item_id);
 
         auto it = std::find_if(tag_poses_to_map_.begin(), tag_poses_to_map_.end(), [item_id](const TagPose2Map &s)
@@ -244,7 +250,6 @@ namespace apriltag_ros
 
           tag_poses_to_map_.emplace_back(item_id, pose_stamp);
         }
-        // ROS_INFO("Detected ID: %d", item_id);
       }
     }
     else
@@ -262,6 +267,7 @@ namespace apriltag_ros
         {
           AprilTagDetection item = tag_detection_array_.detections[i];
           int item_id = item.id[0];
+
           if (!tag_detector_->checkIDexists(item_id))
           {
             continue;
@@ -303,18 +309,17 @@ namespace apriltag_ros
                 tf::Pose cameraPoseToTag = tagPoseToCamera.inverse();
                 tf::Pose cameraPoseToMap = tagPoseToMap * cameraPoseToTag;
 
-                tf::StampedTransform transform_cameraToRobot;
                 try
                 {
                   tf_listener_.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(), ros::Duration(3.0));
-                  tf_listener_.lookupTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(), transform_cameraToRobot);
+                  tf_listener_.lookupTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(), transform_cameraToRobot_);
                 }
                 catch (tf::TransformException &ex)
                 {
                   ROS_ERROR("Transform between %s and %s : %s", tracking_frame_.c_str(), item.pose.header.frame_id.c_str(), ex.what());
                   return;
                 }
-                tf::Transform robotPoseToMap = cameraPoseToMap * transform_cameraToRobot.inverse();
+                tf::Transform robotPoseToMap = cameraPoseToMap * transform_cameraToRobot_.inverse();
 
                 geometry_msgs::PoseStamped robot_pose_to_map;
                 robot_pose_to_map.header = item.pose.header;
