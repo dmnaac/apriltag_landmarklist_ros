@@ -40,6 +40,7 @@
 #include <geometry_msgs/PoseStamped.h>
 
 #include <algorithm>
+#include <iomanip>
 
 PLUGINLIB_EXPORT_CLASS(apriltag_ros::ContinuousDetector, nodelet::Nodelet);
 
@@ -412,10 +413,17 @@ namespace apriltag_ros
       return false;
     }
 
+    file << std::fixed << std::setprecision(13);
     for (const TagPose2Map &item : tag_poses_to_map_)
     {
-      file << item.id << " " << item.pose.pose.position.x << " " << item.pose.pose.position.y << " " << item.pose.pose.position.z << " "
-           << item.pose.pose.orientation.x << " " << item.pose.pose.orientation.y << " " << item.pose.pose.orientation.z << " " << item.pose.pose.orientation.w << "\n";
+      file << item.id << " "
+           << item.pose.pose.position.x << " "
+           << item.pose.pose.position.y << " "
+           << item.pose.pose.position.z << " "
+           << item.pose.pose.orientation.x << " "
+           << item.pose.pose.orientation.y << " "
+           << item.pose.pose.orientation.z << " "
+           << item.pose.pose.orientation.w << "\n";
     }
 
     file.close();
