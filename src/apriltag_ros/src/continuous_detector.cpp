@@ -80,6 +80,7 @@ namespace apriltag_ros
         return;
       }
       write_tags_service_ = pnh.advertiseService("write_tags", &ContinuousDetector::writeTagsServiceCallback, this);
+      robot_pose_publisher_ = nh.advertise<geometry_msgs::PoseStamped>("april_pose", 10); // For debugging
     }
     else
     {
@@ -208,18 +209,11 @@ namespace apriltag_ros
             continue;
           }
 
-          tf::Vector3 translation = transform_tagToMap_.getOrigin();
-          tf::Quaternion rotation = transform_tagToMap_.getRotation();
-
           it->pose.header = item.pose.header;
           it->pose.header.frame_id = map_frame_;
-          it->pose.pose.position.x = translation.x();
-          it->pose.pose.position.y = translation.y();
-          it->pose.pose.position.z = translation.z();
-          it->pose.pose.orientation.x = rotation.x();
-          it->pose.pose.orientation.y = rotation.y();
-          it->pose.pose.orientation.z = rotation.z();
-          it->pose.pose.orientation.w = rotation.w();
+          it->pose.pose = transformToPose(transform_tagToMap_);
+
+          robot_pose_publisher_.publish(it->pose); // For debugging
         }
         else
         {
@@ -234,21 +228,13 @@ namespace apriltag_ros
             continue;
           }
 
-          tf::Vector3 translation = transform_tagToMap_.getOrigin();
-          tf::Quaternion rotation = transform_tagToMap_.getRotation();
-
           geometry_msgs::PoseStamped pose_stamp;
           pose_stamp.header = item.pose.header;
           pose_stamp.header.frame_id = map_frame_;
-          pose_stamp.pose.position.x = translation.x();
-          pose_stamp.pose.position.y = translation.y();
-          pose_stamp.pose.position.z = translation.z();
-          pose_stamp.pose.orientation.x = rotation.x();
-          pose_stamp.pose.orientation.y = rotation.y();
-          pose_stamp.pose.orientation.z = rotation.z();
-          pose_stamp.pose.orientation.w = rotation.w();
+          pose_stamp.pose = transformToPose(transform_tagToMap_);
 
           tag_poses_to_map_.emplace_back(item_id, pose_stamp);
+          robot_pose_publisher_.publish(pose_stamp); // For debugging
         }
       }
     }
@@ -311,14 +297,15 @@ namespace apriltag_ros
 
                 try
                 {
-                  tf_listener_.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(), ros::Duration(3.0));
-                  tf_listener_.lookupTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(), transform_cameraToRobot_);
+                  tf_listener_.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(3.0));
+                  tf_listener_.lookupTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), transform_cameraToRobot_);
                 }
                 catch (tf::TransformException &ex)
                 {
                   ROS_ERROR("Transform between %s and %s : %s", tracking_frame_.c_str(), item.pose.header.frame_id.c_str(), ex.what());
                   return;
                 }
+
                 tf::Transform robotPoseToMap = cameraPoseToMap * transform_cameraToRobot_.inverse();
 
                 geometry_msgs::PoseStamped robot_pose_to_map;
