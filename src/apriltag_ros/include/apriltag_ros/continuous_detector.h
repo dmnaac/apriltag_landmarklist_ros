@@ -53,6 +53,7 @@
 #include <ros/service_server.h>
 #include <std_srvs/Empty.h>
 #include <geometry_msgs/Pose.h>
+#include <geometry_msgs/PoseStamped.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 
@@ -100,6 +101,8 @@ namespace apriltag_ros
     ros::Publisher tag_detections_publisher_;
     ros::Publisher landmarks_publisher_;
     ros::Publisher april_pose_publisher_;
+    ros::Subscriber amcl_pose_subscriber_;
+    ros::Publisher amcl_initialpose_publisher_;
 
     ros::ServiceServer refresh_params_service_;
     bool refreshParamsCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
@@ -125,6 +128,10 @@ namespace apriltag_ros
     tf::TransformListener tf_listener_;
     tf::StampedTransform transform_tagToMap_;
     tf::StampedTransform transform_cameraToRobot_;
+    geometry_msgs::PoseStamped robot_pose_to_map_;
+
+    double position_tolerance_;
+    double orientation_tolerance_;
   };
 
 } // namespace apriltag_ros

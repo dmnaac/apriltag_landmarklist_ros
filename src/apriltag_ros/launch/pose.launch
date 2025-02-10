@@ -34,6 +34,8 @@
 		This parameter is used only when enable_write_tags is set to false. -->
         <param name="path_to_pose_txt" type="string" value="$(env HOME)/dmnaac_ws/apriltag_landmarklist_ros/src/apriltag_ros/config/pose.txt" />
         <param name="publish_robot_pose" type="bool" value="true" />
+        <param name="position_tolerance" type="double" value="1.0" />
+        <param name="orientation_tolerance" type="double" value="0.3491" />
 
     </node>
 

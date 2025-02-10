@@ -38,6 +38,7 @@
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
 #include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/PoseWithCovarianceStamped.h>
 
 #include <algorithm>
 #include <iomanip>
@@ -86,6 +87,10 @@ namespace apriltag_ros
     {
       path_to_pose_txt_ = getAprilTagOption<std::string>(pnh, "path_to_pose_txt", "");
       tracking_frame_ = getAprilTagOption<std::string>(pnh, "tracking_frame", "base_link");
+      amcl_pose_subscriber_ = nh.subscribe("amcl_pose", 1000, amclPoseCallback);
+      amcl_initialpose_publisher_ = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1);
+      position_tolerance_ = getAprilTagOption<double>(pnh, "position_tolerance", 1.0);          // Unit: meters
+      orientation_tolerance_ = getAprilTagOption<double>(pnh, "orientation_tolerance", 0.3491); // Unit: radians
     }
 
     publish_april_pose_ = getAprilTagOption<bool>(pnh, "publish_robot_pose", false);
@@ -313,14 +318,16 @@ namespace apriltag_ros
 
                 tf::Transform robotPoseToMap = cameraPoseToMap * transform_cameraToRobot_.inverse();
 
-                geometry_msgs::PoseStamped robot_pose_to_map;
-                robot_pose_to_map.header = item.pose.header;
-                robot_pose_to_map.header.frame_id = map_frame_;
-                robot_pose_to_map.pose = transformToPose(robotPoseToMap);
+                robot_pose_to_map_.header = item.pose.header;
+                robot_pose_to_map_.header.frame_id = map_frame_;
+                robot_pose_to_map_.pose = transformToPose(robotPoseToMap);
+                robot_pose_to_map_.pose.position.z = 0.0;
+                robot_pose_to_map_.pose.orientation.x = 0.0;
+                robot_pose_to_map_.pose.orientation.y = 0.0;
 
                 if (publish_april_pose_)
                 {
-                  april_pose_publisher_.publish(robot_pose_to_map);
+                  april_pose_publisher_.publish(robot_pose_to_map_);
                 }
               }
             }
@@ -434,6 +441,46 @@ namespace apriltag_ros
     ROS_INFO("Saving successfully.");
     response.write_state = 1;
     return true;
+  }
+
+  void ContinuousDetector::amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg)
+  {
+    ros::Time amcl_pose_stamp = msg->header.stamp;
+    ros::Time april_pose_stamp = robot_pose_to_map_.header.stamp;
+    const double sync_threshold = 0.1; // Unit: second
+    if ((amcl_pose_stamp - april_pose_stamp).toSec() < sync_threshold && (april_pose_stamp - amcl_pose_stamp).toSec() < sync_threshold)
+    {
+      ROS_INFO("Synchronized poses are found.");
+
+      double dx = msg->pose.pose.position.x - robot_pose_to_map_.pose.position.x;
+      double dy = msg->pose.pose.position.y - robot_pose_to_map_.pose.position.y;
+      double position_diff = std::sqrt(dx * dx + dy * dy);
+
+      tf::Quaternion q1(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
+      tf::Quaternion q2(robot_pose_to_map_.orientation.x, robot_pose_to_map_.orientation.y, robot_pose_to_map_.orientation.z, robot_pose_to_map_.orientation.w);
+      tf::Quaternion orientation_diff = q1.inverse() * q2;
+      double roll, pitch, yaw;
+      tf::Matrix3x3 m(orientation_diff);
+      m.getRPY(roll, pitch, yaw);
+
+      if (position_diff > position_tolerance_ || yaw > orientation_tolerance_)
+      {
+        geometry_msgs::PoseWithCovarianceStamped pose_to_be_published;
+        pose_to_be_published.header.frame_id = map_frame_;
+        pose_to_be_published.header.stamp = ros::Time::Now();
+        pose_to_be_published.pose.pose = robot_pose_to_map_.pose;
+        for (int i = 0; i < 36; i++)
+        {
+          pose_to_be_published.pose.covariance[i] = 0.0;
+        }
+
+        amcl_initialpose_publisher_.publish(robot_pose_to_map_);
+      }
+    }
+    else
+    {
+      return;
+    }
   }
 
 } // namespace apriltag_ros
