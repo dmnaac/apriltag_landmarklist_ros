@@ -81,18 +81,15 @@ namespace apriltag_ros
         return;
       }
       write_tags_service_ = pnh.advertiseService("write_tags", &ContinuousDetector::writeTagsServiceCallback, this);
-      robot_pose_publisher_ = nh.advertise<geometry_msgs::PoseStamped>("april_pose", 10); // For debugging
     }
     else
     {
       path_to_pose_txt_ = getAprilTagOption<std::string>(pnh, "path_to_pose_txt", "");
       tracking_frame_ = getAprilTagOption<std::string>(pnh, "tracking_frame", "base_link");
-      publish_robot_pose_ = getAprilTagOption<bool>(pnh, "publish_robot_pose", false);
-      if (publish_robot_pose_)
-      {
-        robot_pose_publisher_ = nh.advertise<geometry_msgs::PoseStamped>("april_pose", 10);
-      }
     }
+
+    publish_april_pose_ = getAprilTagOption<bool>(pnh, "publish_robot_pose", false);
+    april_pose_publisher_ = nh.advertise<geometry_msgs::PoseStamped>("april_pose", 10);
 
     if (publish_landmarks_)
     {
@@ -214,7 +211,10 @@ namespace apriltag_ros
           it->pose.header.frame_id = map_frame_;
           it->pose.pose = transformToPose(transform_tagToMap_);
 
-          robot_pose_publisher_.publish(it->pose); // For debugging
+          if (publish_april_pose_)
+          {
+            april_pose_publisher_.publish(it->pose); // For debugging
+          }
         }
         else
         {
@@ -235,7 +235,11 @@ namespace apriltag_ros
           pose_stamp.pose = transformToPose(transform_tagToMap_);
 
           tag_poses_to_map_.emplace_back(item_id, pose_stamp);
-          robot_pose_publisher_.publish(pose_stamp); // For debugging
+
+          if (publish_april_pose_)
+          {
+            april_pose_publisher_.publish(pose_stamp); // For debugging
+          }
         }
       }
     }
@@ -314,9 +318,9 @@ namespace apriltag_ros
                 robot_pose_to_map.header.frame_id = map_frame_;
                 robot_pose_to_map.pose = transformToPose(robotPoseToMap);
 
-                if (publish_robot_pose_)
+                if (publish_april_pose_)
                 {
-                  robot_pose_publisher_.publish(robot_pose_to_map);
+                  april_pose_publisher_.publish(robot_pose_to_map);
                 }
               }
             }

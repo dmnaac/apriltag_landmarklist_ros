@@ -99,7 +99,7 @@ namespace apriltag_ros
     image_transport::Publisher tag_detections_image_publisher_;
     ros::Publisher tag_detections_publisher_;
     ros::Publisher landmarks_publisher_;
-    ros::Publisher robot_pose_publisher_;
+    ros::Publisher april_pose_publisher_;
 
     ros::ServiceServer refresh_params_service_;
     bool refreshParamsCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
@@ -118,7 +118,7 @@ namespace apriltag_ros
     std::vector<TagPose2Camera> tag_poses_to_camera_;
     std::vector<TagPose2Map> tag_poses_to_map_;
     std::string path_to_pose_txt_;
-    bool publish_robot_pose_;
+    bool publish_april_pose_;
     bool enable_write_tags_service_;
 
     AprilTagDetectionArray tag_detection_array_;
