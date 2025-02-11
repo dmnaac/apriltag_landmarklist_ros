@@ -108,8 +108,10 @@ namespace apriltag_ros
     bool refreshParamsCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
     ros::ServiceServer write_tags_service_;
     bool writeTagsServiceCallback(apriltag_ros::WriteTags::Request &request, apriltag_ros::WriteTags::Response &response);
+    void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg);
 
     geometry_msgs::Pose transformToPose(const tf::Transform &transform);
+    AprilTagDetectionArray AprilTagDetectionFilter(AprilTagDetectionArray &tag_detection_array);
 
   public:
     bool publish_landmarks_;

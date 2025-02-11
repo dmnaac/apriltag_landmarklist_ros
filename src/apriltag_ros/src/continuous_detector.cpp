@@ -87,10 +87,11 @@ namespace apriltag_ros
     {
       path_to_pose_txt_ = getAprilTagOption<std::string>(pnh, "path_to_pose_txt", "");
       tracking_frame_ = getAprilTagOption<std::string>(pnh, "tracking_frame", "base_link");
-      amcl_pose_subscriber_ = nh.subscribe("amcl_pose", 1000, amclPoseCallback);
+      amcl_pose_subscriber_ = nh.subscribe("amcl_pose", 1000, &ContinuousDetector::amclPoseCallback, this);
       amcl_initialpose_publisher_ = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1);
       position_tolerance_ = getAprilTagOption<double>(pnh, "position_tolerance", 1.0);          // Unit: meters
       orientation_tolerance_ = getAprilTagOption<double>(pnh, "orientation_tolerance", 0.3491); // Unit: radians
+      robot_pose_to_map_.header.seq = -1;
     }
 
     publish_april_pose_ = getAprilTagOption<bool>(pnh, "publish_robot_pose", false);
@@ -147,6 +148,24 @@ namespace apriltag_ros
     return pose;
   }
 
+  AprilTagDetectionArray ContinuousDetector::AprilTagDetectionFilter(AprilTagDetectionArray &tag_detection_array)
+  {
+    AprilTagDetectionArray array;
+    for (int i = 0; i < tag_detection_array.detections.size(); i++)
+    {
+      AprilTagDetection item = tag_detection_array.detections[i];
+      double dist = sqrt(item.pose.pose.pose.position.x * item.pose.pose.pose.position.x +
+                         item.pose.pose.pose.position.y * item.pose.pose.pose.position.y +
+                         item.pose.pose.pose.position.z * item.pose.pose.pose.position.z);
+      if (dist < 2.0)
+      {
+        array.detections.push_back(item);
+      }
+    }
+    array.header = tag_detection_array.header;
+    return array;
+  }
+
   void ContinuousDetector::imageCallback(
       const sensor_msgs::ImageConstPtr &image_rect,
       const sensor_msgs::CameraInfoConstPtr &camera_info)
@@ -177,8 +196,9 @@ namespace apriltag_ros
     }
 
     // Publish detected tags in the image by AprilTag 2
-    tag_detection_array_ = tag_detector_->detectTags(cv_image_, camera_info);
-
+    AprilTagDetectionArray raw_array;
+    raw_array = tag_detector_->detectTags(cv_image_, camera_info);
+    tag_detection_array_ = AprilTagDetectionFilter(raw_array);
     tag_detections_publisher_.publish(tag_detection_array_);
 
     // If enable_write_tags_service_ is true, the pose of each detected tag relative to camera is stored.
@@ -448,16 +468,21 @@ namespace apriltag_ros
     ros::Time amcl_pose_stamp = msg->header.stamp;
     ros::Time april_pose_stamp = robot_pose_to_map_.header.stamp;
     const double sync_threshold = 0.1; // Unit: second
+    if (robot_pose_to_map_.header.seq == -1)
+    {
+      // robot_pose_to_map_ is not initialized.
+      ROS_INFO("No poses of robot relative to map is obtained.");
+      return;
+    }
+
     if ((amcl_pose_stamp - april_pose_stamp).toSec() < sync_threshold && (april_pose_stamp - amcl_pose_stamp).toSec() < sync_threshold)
     {
-      ROS_INFO("Synchronized poses are found.");
-
       double dx = msg->pose.pose.position.x - robot_pose_to_map_.pose.position.x;
       double dy = msg->pose.pose.position.y - robot_pose_to_map_.pose.position.y;
       double position_diff = std::sqrt(dx * dx + dy * dy);
 
       tf::Quaternion q1(msg->pose.pose.orientation.x, msg->pose.pose.orientation.y, msg->pose.pose.orientation.z, msg->pose.pose.orientation.w);
-      tf::Quaternion q2(robot_pose_to_map_.orientation.x, robot_pose_to_map_.orientation.y, robot_pose_to_map_.orientation.z, robot_pose_to_map_.orientation.w);
+      tf::Quaternion q2(robot_pose_to_map_.pose.orientation.x, robot_pose_to_map_.pose.orientation.y, robot_pose_to_map_.pose.orientation.z, robot_pose_to_map_.pose.orientation.w);
       tf::Quaternion orientation_diff = q1.inverse() * q2;
       double roll, pitch, yaw;
       tf::Matrix3x3 m(orientation_diff);
@@ -467,14 +492,15 @@ namespace apriltag_ros
       {
         geometry_msgs::PoseWithCovarianceStamped pose_to_be_published;
         pose_to_be_published.header.frame_id = map_frame_;
-        pose_to_be_published.header.stamp = ros::Time::Now();
+        pose_to_be_published.header.stamp = ros::Time::now();
         pose_to_be_published.pose.pose = robot_pose_to_map_.pose;
         for (int i = 0; i < 36; i++)
         {
           pose_to_be_published.pose.covariance[i] = 0.0;
         }
 
-        amcl_initialpose_publisher_.publish(robot_pose_to_map_);
+        amcl_initialpose_publisher_.publish(pose_to_be_published);
+        ROS_INFO("New robot pose is published.");
       }
     }
     else
