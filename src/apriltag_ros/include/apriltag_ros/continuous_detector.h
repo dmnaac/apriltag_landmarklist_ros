@@ -45,6 +45,7 @@
 
 #include "apriltag_ros/common_functions.h"
 #include "apriltag_ros/WriteTags.h"
+#include "apriltag_ros/SetFile.h"
 
 #include <memory>
 #include <mutex>
@@ -102,13 +103,15 @@ namespace apriltag_ros
     ros::Publisher landmarks_publisher_;
     ros::Publisher april_pose_publisher_;
     ros::Subscriber amcl_pose_subscriber_;
+    void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg);
     ros::Publisher amcl_initialpose_publisher_;
 
     ros::ServiceServer refresh_params_service_;
     bool refreshParamsCallback(std_srvs::Empty::Request &req, std_srvs::Empty::Response &res);
     ros::ServiceServer write_tags_service_;
     bool writeTagsServiceCallback(apriltag_ros::WriteTags::Request &request, apriltag_ros::WriteTags::Response &response);
-    void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg);
+    ros::ServiceServer set_file_service_;
+    bool setFileServiceCallback(apriltag_ros::SetFile::Request &request, apriltag_ros::SetFile::Response &response);
 
     geometry_msgs::Pose transformToPose(const tf::Transform &transform);
     AprilTagDetectionArray AprilTagDetectionFilter(AprilTagDetectionArray &tag_detection_array);

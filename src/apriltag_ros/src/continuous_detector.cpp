@@ -85,6 +85,7 @@ namespace apriltag_ros
     }
     else
     {
+      set_file_service_ = pnh.advertiseService("set_file", &ContinuousDetector::setFileServiceCallback, this);
       path_to_pose_txt_ = getAprilTagOption<std::string>(pnh, "path_to_pose_txt", "");
       tracking_frame_ = getAprilTagOption<std::string>(pnh, "tracking_frame", "base_link");
       amcl_pose_subscriber_ = nh.subscribe("amcl_pose", 1000, &ContinuousDetector::amclPoseCallback, this);
@@ -201,8 +202,11 @@ namespace apriltag_ros
     tag_detection_array_ = AprilTagDetectionFilter(raw_array);
     tag_detections_publisher_.publish(tag_detection_array_);
 
-    // If enable_write_tags_service_ is true, the pose of each detected tag relative to camera is stored.
-    // If one tag is detected more than once, only the latest pose relative to camera is stored.
+    // If enable_write_tags_service_ is true, the write_tags service can be called to save
+    // the poses relative to map of all detected tags.
+    // If false, the pose relative to map of each detected tag will be used to calculate
+    // the pose of the robot relative to map. If the detected tag is not listed in the pose.txt file,
+    // its pose will be saved in this file.
     if (enable_write_tags_service_)
     {
       for (int i = 0; i < tag_detection_array_.detections.size(); i++)
@@ -272,10 +276,10 @@ namespace apriltag_ros
     {
       if (tag_detection_array_.detections.size() > 0)
       {
-        std::ifstream file(path_to_pose_txt_);
+        std::fstream file(path_to_pose_txt_, std::ios::in | std::ios::out | std::ios::app);
         if (!file.is_open())
         {
-          ROS_ERROR("Failed to open the pose.txt file.");
+          ROS_ERROR("Failed to open file %s.", path_to_pose_txt_.c_str());
           return;
         }
 
@@ -290,6 +294,7 @@ namespace apriltag_ros
           }
 
           std::string line;
+          bool hasFoundTag = false;
           while (std::getline(file, line))
           {
             std::istringstream iss(line);
@@ -302,6 +307,8 @@ namespace apriltag_ros
             {
               if (tag_id == item_id)
               {
+                hasFoundTag = true;
+
                 geometry_msgs::PoseStamped tag_pose_to_map;
                 geometry_msgs::PoseStamped tag_pose_to_camera;
                 geometry_msgs::PoseStamped camera_pose_to_map;
@@ -333,7 +340,7 @@ namespace apriltag_ros
                 catch (tf::TransformException &ex)
                 {
                   ROS_ERROR("Transform between %s and %s : %s", tracking_frame_.c_str(), item.pose.header.frame_id.c_str(), ex.what());
-                  return;
+                  break;
                 }
 
                 tf::Transform robotPoseToMap = cameraPoseToMap * transform_cameraToRobot_.inverse();
@@ -349,10 +356,43 @@ namespace apriltag_ros
                 {
                   april_pose_publisher_.publish(robot_pose_to_map_);
                 }
+                break;
               }
             }
           }
+          if (!hasFoundTag)
+          {
+            file.clear();                 // Clear error state of stream
+            file.seekp(0, std::ios::end); // Move writing pointer to the end of file
+
+            std::string tag_frame = "tag_" + std::to_string(item_id);
+            try
+            {
+              tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
+              tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap_);
+            }
+            catch (const std::exception &ex)
+            {
+              ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
+              continue;
+            }
+
+            tf::Vector3 translation = transform_tagToMap_.getOrigin();
+            tf::Quaternion rotation = transform_tagToMap_.getRotation();
+            file << std::fixed << std::setprecision(13);
+            file << item_id << " "
+                 << translation.x() << " "
+                 << translation.y() << " "
+                 << translation.z() << " "
+                 << rotation.x() << " "
+                 << rotation.y() << " "
+                 << rotation.z() << " "
+                 << rotation.w() << "\n";
+
+            ROS_INFO("New tag was added to %s .", path_to_pose_txt_);
+          }
         }
+        file.close();
       }
     }
 
@@ -461,6 +501,25 @@ namespace apriltag_ros
     ROS_INFO("Saving successfully.");
     response.write_state = 1;
     return true;
+  }
+
+  bool ContinuousDetector::setFileServiceCallback(apriltag_ros::SetFile::Request &request, apriltag_ros::SetFile::Response &response)
+  {
+    std::string filename = request.file_directory + "/" + request.file_basename + ".txt";
+    std::ifstream file(filename);
+    if (file.is_open())
+    {
+      path_to_pose_txt_ = filename;
+      response.set_state = 1;
+      file.close();
+      return true;
+    }
+    else
+    {
+      ROS_ERROR("Cannot change to the target file.");
+      response.set_state = 0;
+      return false;
+    }
   }
 
   void ContinuousDetector::amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg)

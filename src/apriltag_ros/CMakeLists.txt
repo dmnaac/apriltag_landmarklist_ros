@@ -59,6 +59,7 @@ add_service_files(
   FILES
   AnalyzeSingleImage.srv
   WriteTags.srv
+  SetFile.srv
 )
 
 generate_messages(
