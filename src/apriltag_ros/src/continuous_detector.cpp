@@ -389,7 +389,7 @@ namespace apriltag_ros
                  << rotation.z() << " "
                  << rotation.w() << "\n";
 
-            ROS_INFO("New tag was added to %s .", path_to_pose_txt_);
+            ROS_INFO("New tag was added to %s .", path_to_pose_txt_.c_str());
           }
         }
         file.close();
