@@ -82,7 +82,7 @@ namespace apriltag_ros
    *
    * @param path Path to the pose.txt file.
    */
-  visualization_msgs::MarkerArray ContinuousDetector::createTagPosesList(const std::string path)
+  void ContinuousDetector::createTagPosesList(const std::string path)
   {
     std::ifstream file(path);
     if (!file.is_open())
@@ -117,7 +117,7 @@ namespace apriltag_ros
       }
     }
 
-    return markerarray;
+    tag_poses_list_ = markerarray;
   }
 
   /**
@@ -177,7 +177,7 @@ namespace apriltag_ros
 
       set_file_service_ = pnh.advertiseService("set_file", &ContinuousDetector::setFileServiceCallback, this);
 
-      tag_poses_list_ = createTagPosesList(path_to_pose_txt_);
+      createTagPosesList(path_to_pose_txt_);
       tag_poses_list_publisher_.publish(tag_poses_list_);
     }
 
