@@ -57,6 +57,8 @@
 #include <geometry_msgs/PoseStamped.h>
 #include <tf/transform_listener.h>
 #include <tf/transform_datatypes.h>
+#include <visualization_msgs/MarkerArray.h>
+#include <visualization_msgs/Marker.h>
 
 namespace apriltag_ros
 {
@@ -115,6 +117,11 @@ namespace apriltag_ros
 
     geometry_msgs::Pose transformToPose(const tf::Transform &transform);
     AprilTagDetectionArray AprilTagDetectionFilter(AprilTagDetectionArray &tag_detection_array);
+
+    ros::Publisher tag_poses_list_publisher_;
+    visualization_msgs::MarkerArray tag_poses_list_;
+    visualization_msgs::Marker createTagMarker(const int type, const int tag_id, const geometry_msgs::Pose pose);
+    void publishTagPosesList(const std::string path);
 
   public:
     bool publish_landmarks_;

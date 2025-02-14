@@ -21,7 +21,7 @@
         <!-- <param name="use_gray_mode" type="int" value="0" /> -->
 
         <!-- Parameters for cartographer_ros landmarks -->
-        <param name="publish_landmarks" type="bool" value="true" />
+        <param name="publish_landmarks" type="bool" value="false" />
         <param name="translation_weight" type="double" value="100000.0" />
         <param name="rotation_weight" type="double" value="100000.0" />
         <param name="tracking_frame" type="string" value="base_footprint" />

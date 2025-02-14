@@ -47,32 +47,108 @@ PLUGINLIB_EXPORT_CLASS(apriltag_ros::ContinuousDetector, nodelet::Nodelet);
 
 namespace apriltag_ros
 {
+  /**
+   * @brief Create visualization_msgs::Marker object
+   *
+   * @param type Type of object
+   * @param tag_id Object id
+   * @param pose Pose of the object
+   * @return visualization_msgs::Marker
+   */
+  visualization_msgs::Marker ContinuousDetector::createTagMarker(const int type, const int tag_id, const geometry_msgs::Pose pose)
+  {
+    visualization_msgs::Marker marker;
+    marker.header.frame_id = map_frame_;
+    marker.header.stamp = ros::Time();
+    std::string ns = "tag_" + std::to_string(type);
+    marker.ns = ns;
+    marker.id = tag_id;
+    marker.type = type;
+    marker.action = visualization_msgs::Marker::ADD;
+    marker.pose = pose;
+    marker.scale.x = 0.2;
+    marker.scale.y = 0.2;
+    marker.scale.z = 0.2;
+    marker.color.a = 1.0;
+    marker.color.r = 1.0;
+    marker.color.g = 0.0;
+    marker.color.b = 0.0;
+  }
+
+  /**
+   * @brief Publish visualization_msgs::MarkerArray message to rviz.
+   *        The message contains the poses of tags listed in pose.txt file.
+   *
+   * @param path Path to the pose.txt file.
+   */
+  void ContinuousDetector::publishTagPosesList(const std::string path)
+  {
+    std::ifstream file(path);
+    if (!file.is_open())
+    {
+      ROS_ERROR("Failed to open file %s.", path.c_str());
+      return;
+    }
+
+    std::string line;
+    while (std::getline(file, line))
+    {
+      std::istringstream iss(line);
+      int tag_id;
+      double px, py, pz;
+      double ox, oy, oz, ow;
+
+      if (iss >> tag_id >> px >> py >> pz >> ox >> oy >> oz >> ow)
+      {
+        geometry_msgs::Pose pose;
+        pose.position.x = px;
+        pose.position.y = py;
+        pose.position.z = pz;
+        pose.orientation.x = ox;
+        pose.orientation.y = oy;
+        pose.orientation.z = oz;
+        pose.orientation.w = ow;
+
+        tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::SPHERE, tag_id, pose));
+        pose.position.z = pz + 0.2;
+        tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::TEXT_VIEW_FACING, tag_id, pose));
+      }
+    }
+    tag_poses_list_publisher_.publish(tag_poses_list_);
+  }
+
+  /**
+   * @brief Initialization
+   *
+   */
   void ContinuousDetector::onInit()
   {
     ros::NodeHandle &nh = getNodeHandle();
     ros::NodeHandle &pnh = getPrivateNodeHandle();
 
     tag_detector_ = std::shared_ptr<TagDetector>(new TagDetector(pnh));
-    draw_tag_detections_image_ = getAprilTagOption<bool>(pnh, "publish_tag_detections_image", false);
-    it_ = std::shared_ptr<image_transport::ImageTransport>(
-        new image_transport::ImageTransport(nh));
 
+    it_ = std::shared_ptr<image_transport::ImageTransport>(new image_transport::ImageTransport(nh));
+
+    draw_tag_detections_image_ = getAprilTagOption<bool>(pnh, "publish_tag_detections_image", false);
     publish_landmarks_ = getAprilTagOption<bool>(pnh, "publish_landmarks", true);
+    enable_write_tags_service_ = getAprilTagOption<bool>(pnh, "enable_write_tags", false);
+    map_frame_ = getAprilTagOption<std::string>(pnh, "map_frame", "map");
+    publish_april_pose_ = getAprilTagOption<bool>(pnh, "publish_robot_pose", true);
 
     std::string transport_hint;
     pnh.param<std::string>("transport_hint", transport_hint, "raw");
 
     int queue_size;
     pnh.param<int>("queue_size", queue_size, 1);
-    camera_image_subscriber_ =
-        it_->subscribeCamera("image_rect", queue_size,
-                             &ContinuousDetector::imageCallback, this,
-                             image_transport::TransportHints(transport_hint));
-    tag_detections_publisher_ =
-        nh.advertise<AprilTagDetectionArray>("tag_detections", 1);
+    camera_image_subscriber_ = it_->subscribeCamera("image_rect", queue_size,
+                                                    &ContinuousDetector::imageCallback, this,
+                                                    image_transport::TransportHints(transport_hint));
 
-    enable_write_tags_service_ = getAprilTagOption<bool>(pnh, "enable_write_tags", false);
-    map_frame_ = getAprilTagOption<std::string>(pnh, "map_frame", "map");
+    tag_detections_publisher_ = nh.advertise<AprilTagDetectionArray>("tag_detections", 1);
+
+    april_pose_publisher_ = nh.advertise<geometry_msgs::PoseStamped>("april_pose", 10);
+
     if (enable_write_tags_service_)
     {
       // Check if tf is published
@@ -85,18 +161,20 @@ namespace apriltag_ros
     }
     else
     {
-      set_file_service_ = pnh.advertiseService("set_file", &ContinuousDetector::setFileServiceCallback, this);
       path_to_pose_txt_ = getAprilTagOption<std::string>(pnh, "path_to_pose_txt", "");
       tracking_frame_ = getAprilTagOption<std::string>(pnh, "tracking_frame", "base_link");
-      amcl_pose_subscriber_ = nh.subscribe("amcl_pose", 1000, &ContinuousDetector::amclPoseCallback, this);
-      amcl_initialpose_publisher_ = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1);
       position_tolerance_ = getAprilTagOption<double>(pnh, "position_tolerance", 1.0);          // Unit: meters
       orientation_tolerance_ = getAprilTagOption<double>(pnh, "orientation_tolerance", 0.3491); // Unit: radians
       robot_pose_to_map_.header.seq = -1;
-    }
 
-    publish_april_pose_ = getAprilTagOption<bool>(pnh, "publish_robot_pose", false);
-    april_pose_publisher_ = nh.advertise<geometry_msgs::PoseStamped>("april_pose", 10);
+      amcl_pose_subscriber_ = nh.subscribe("amcl_pose", 1000, &ContinuousDetector::amclPoseCallback, this);
+      amcl_initialpose_publisher_ = nh.advertise<geometry_msgs::PoseWithCovarianceStamped>("initialpose", 1);
+
+      set_file_service_ = pnh.advertiseService("set_file", &ContinuousDetector::setFileServiceCallback, this);
+
+      tag_poses_list_publisher_ = nh.advertise<visualization_msgs::MarkerArray>("tag_poses_list", 1);
+      publishTagPosesList(path_to_pose_txt_);
+    }
 
     if (publish_landmarks_)
     {
@@ -133,7 +211,12 @@ namespace apriltag_ros
     return true;
   }
 
-  // Convert tf::Transform to geometry_msgs::Pose
+  /**
+   * @brief Convert tf::Transform to geometry_msgs::Pose
+   *
+   * @param transform tf::Transform
+   * @return geometry_msgs::Pose
+   */
   geometry_msgs::Pose ContinuousDetector::transformToPose(const tf::Transform &transform)
   {
     geometry_msgs::Pose pose;
@@ -149,6 +232,12 @@ namespace apriltag_ros
     return pose;
   }
 
+  /**
+   * @brief Filter out AprilTagDetection with larger distance.
+   *
+   * @param tag_detection_array
+   * @return AprilTagDetectionArray
+   */
   AprilTagDetectionArray ContinuousDetector::AprilTagDetectionFilter(AprilTagDetectionArray &tag_detection_array)
   {
     AprilTagDetectionArray array;
@@ -167,6 +256,12 @@ namespace apriltag_ros
     return array;
   }
 
+  /**
+   * @brief Image callback function
+   *
+   * @param image_rect Rectified image
+   * @param camera_info Camera extrinsics and intrinsics
+   */
   void ContinuousDetector::imageCallback(
       const sensor_msgs::ImageConstPtr &image_rect,
       const sensor_msgs::CameraInfoConstPtr &camera_info)
@@ -379,19 +474,33 @@ namespace apriltag_ros
 
             tf::Vector3 translation = transform_tagToMap_.getOrigin();
             tf::Quaternion rotation = transform_tagToMap_.getRotation();
+            geometry_msgs::Pose pose;
+            pose.position.x = translation.x();
+            pose.position.y = translation.y();
+            pose.position.z = translation.z();
+            pose.orientation.x = rotation.x();
+            pose.orientation.y = rotation.y();
+            pose.orientation.z = rotation.z();
+            pose.orientation.w = rotation.w();
+
             file << std::fixed << std::setprecision(13);
             file << item_id << " "
-                 << translation.x() << " "
-                 << translation.y() << " "
-                 << translation.z() << " "
-                 << rotation.x() << " "
-                 << rotation.y() << " "
-                 << rotation.z() << " "
-                 << rotation.w() << "\n";
+                 << pose.position.x << " "
+                 << pose.position.y << " "
+                 << pose.position.z << " "
+                 << pose.orientation.x << " "
+                 << pose.orientation.y << " "
+                 << pose.orientation.z << " "
+                 << pose.orientation.w << "\n";
 
-            ROS_INFO("New tag was added to %s .", path_to_pose_txt_.c_str());
+            tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::SPHERE, item_id, pose));
+            pose.position.z = pose.position.z + 0.2;
+            tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::TEXT_VIEW_FACING, item_id, pose));
+
+            ROS_INFO("New tag (id: %d) was added to %s .", item_id, path_to_pose_txt_.c_str());
           }
         }
+        tag_poses_list_publisher_.publish(tag_poses_list_);
         file.close();
       }
     }
@@ -457,6 +566,14 @@ namespace apriltag_ros
     }
   }
 
+  /**
+   * @brief write_tags service callback function. The service will save the poses of tags in a .txt file.
+   *
+   * @param request
+   * @param response
+   * @return true
+   * @return false
+   */
   bool ContinuousDetector::writeTagsServiceCallback(apriltag_ros::WriteTags::Request &request, apriltag_ros::WriteTags::Response &response)
   {
     // Check if tf is published
@@ -503,6 +620,14 @@ namespace apriltag_ros
     return true;
   }
 
+  /**
+   * @brief set_file service callback function. The service will change the path to the target .txt file.
+   *
+   * @param request
+   * @param response
+   * @return true
+   * @return false
+   */
   bool ContinuousDetector::setFileServiceCallback(apriltag_ros::SetFile::Request &request, apriltag_ros::SetFile::Response &response)
   {
     std::string filename = request.file_directory + "/" + request.file_basename + ".txt";
@@ -522,6 +647,11 @@ namespace apriltag_ros
     }
   }
 
+  /**
+   * @brief amcl_pose message callback function.
+   *
+   * @param msg
+   */
   void ContinuousDetector::amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg)
   {
     ros::Time amcl_pose_stamp = msg->header.stamp;
