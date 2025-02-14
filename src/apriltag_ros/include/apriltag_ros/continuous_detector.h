@@ -121,7 +121,7 @@ namespace apriltag_ros
     ros::Publisher tag_poses_list_publisher_;
     visualization_msgs::MarkerArray tag_poses_list_;
     visualization_msgs::Marker createTagMarker(const int type, const int tag_id, const geometry_msgs::Pose pose);
-    void createTagPosesList(const std::string path);
+    visualization_msgs::MarkerArray createTagPosesList(const std::string path);
 
   public:
     bool publish_landmarks_;

@@ -59,7 +59,7 @@ namespace apriltag_ros
   {
     visualization_msgs::Marker marker;
     marker.header.frame_id = map_frame_;
-    marker.header.stamp = ros::Time();
+    marker.header.stamp = ros::Time::now();
     std::string ns = "tag_" + std::to_string(type);
     marker.ns = ns;
     marker.id = tag_id;
@@ -73,6 +73,7 @@ namespace apriltag_ros
     marker.color.r = 1.0;
     marker.color.g = 0.0;
     marker.color.b = 0.0;
+    marker.lifetime = ros::Duration();
 
     return marker;
   }
@@ -82,16 +83,17 @@ namespace apriltag_ros
    *
    * @param path Path to the pose.txt file.
    */
-  void ContinuousDetector::createTagPosesList(const std::string path)
+  visualization_msgs::MarkerArray ContinuousDetector::createTagPosesList(const std::string path)
   {
+    visualization_msgs::MarkerArray markerarray;
+
     std::ifstream file(path);
     if (!file.is_open())
     {
       ROS_ERROR("Failed to open file %s.", path.c_str());
-      return;
+      return markerarray;
     }
 
-    visualization_msgs::MarkerArray markerarray;
     std::string line;
     while (std::getline(file, line))
     {
@@ -117,7 +119,7 @@ namespace apriltag_ros
       }
     }
 
-    tag_poses_list_ = markerarray;
+    return markerarray;
   }
 
   /**
@@ -177,7 +179,7 @@ namespace apriltag_ros
 
       set_file_service_ = pnh.advertiseService("set_file", &ContinuousDetector::setFileServiceCallback, this);
 
-      createTagPosesList(path_to_pose_txt_);
+      tag_poses_list_ = createTagPosesList(path_to_pose_txt_);
       tag_poses_list_publisher_.publish(tag_poses_list_);
     }
 
