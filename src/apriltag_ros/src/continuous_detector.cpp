@@ -119,6 +119,7 @@ namespace apriltag_ros
         pose.orientation.w = ow;
 
         markerarray.markers.push_back(createTagMarker(visualization_msgs::Marker::SPHERE, tag_id, pose));
+        pose.position.y = py + 0.2;
         pose.position.z = pz + 0.2;
         markerarray.markers.push_back(createTagMarker(visualization_msgs::Marker::TEXT_VIEW_FACING, tag_id, pose));
       }
@@ -507,6 +508,7 @@ namespace apriltag_ros
                  << pose.orientation.w << "\n";
 
             tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::SPHERE, item_id, pose));
+            pose.position.y = pose.position.y + 0.2;
             pose.position.z = pose.position.z + 0.2;
             tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::TEXT_VIEW_FACING, item_id, pose));
 
