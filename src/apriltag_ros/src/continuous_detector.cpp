@@ -78,12 +78,11 @@ namespace apriltag_ros
   }
 
   /**
-   * @brief Publish visualization_msgs::MarkerArray message to rviz.
-   *        The message contains the poses of tags listed in pose.txt file.
+   * @brief Create visualization_msgs::MarkerArray object.
    *
    * @param path Path to the pose.txt file.
    */
-  void ContinuousDetector::publishTagPosesList(const std::string path)
+  visualization_msgs::MarkerArray ContinuousDetector::createTagPosesList(const std::string path)
   {
     std::ifstream file(path);
     if (!file.is_open())
@@ -92,6 +91,7 @@ namespace apriltag_ros
       return;
     }
 
+    visualization_msgs::MarkerArray markerarray;
     std::string line;
     while (std::getline(file, line))
     {
@@ -111,12 +111,13 @@ namespace apriltag_ros
         pose.orientation.z = oz;
         pose.orientation.w = ow;
 
-        tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::SPHERE, tag_id, pose));
+        markerarray.markers.push_back(createTagMarker(visualization_msgs::Marker::SPHERE, tag_id, pose));
         pose.position.z = pz + 0.2;
-        tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::TEXT_VIEW_FACING, tag_id, pose));
+        markerarray.markers.push_back(createTagMarker(visualization_msgs::Marker::TEXT_VIEW_FACING, tag_id, pose));
       }
     }
-    tag_poses_list_publisher_.publish(tag_poses_list_);
+
+    return markerarray;
   }
 
   /**
@@ -151,6 +152,8 @@ namespace apriltag_ros
 
     april_pose_publisher_ = nh.advertise<geometry_msgs::PoseStamped>("april_pose", 10);
 
+    tag_poses_list_publisher_ = nh.advertise<visualization_msgs::MarkerArray>("tag_poses_list", 10);
+
     if (enable_write_tags_service_)
     {
       // Check if tf is published
@@ -174,8 +177,8 @@ namespace apriltag_ros
 
       set_file_service_ = pnh.advertiseService("set_file", &ContinuousDetector::setFileServiceCallback, this);
 
-      tag_poses_list_publisher_ = nh.advertise<visualization_msgs::MarkerArray>("tag_poses_list", 1);
-      publishTagPosesList(path_to_pose_txt_);
+      tag_poses_list_ = createTagPosesList(path_to_pose_txt_);
+      tag_poses_list_publisher_.publish(tag_poses_list_);
     }
 
     if (publish_landmarks_)
