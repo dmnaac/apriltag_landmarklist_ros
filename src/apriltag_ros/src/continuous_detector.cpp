@@ -180,7 +180,6 @@ namespace apriltag_ros
       set_file_service_ = pnh.advertiseService("set_file", &ContinuousDetector::setFileServiceCallback, this);
 
       tag_poses_list_ = createTagPosesList(path_to_pose_txt_);
-      tag_poses_list_publisher_.publish(tag_poses_list_);
     }
 
     if (publish_landmarks_)
@@ -285,6 +284,8 @@ namespace apriltag_ros
       ROS_INFO_STREAM("No subscribers and no tf publishing, skip processing.");
       return;
     }
+
+    tag_poses_list_publisher_.publish(tag_poses_list_);
 
     // Convert ROS's sensor_msgs::Image to cv_bridge::CvImagePtr in order to run
     // AprilTag 2 on the iamge
