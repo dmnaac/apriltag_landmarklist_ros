@@ -73,6 +73,8 @@ namespace apriltag_ros
     marker.color.r = 1.0;
     marker.color.g = 0.0;
     marker.color.b = 0.0;
+
+    return marker;
   }
 
   /**
