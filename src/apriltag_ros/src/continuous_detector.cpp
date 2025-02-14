@@ -75,6 +75,11 @@ namespace apriltag_ros
     marker.color.b = 0.0;
     marker.lifetime = ros::Duration();
 
+    if (type == 9)
+    {
+      marker.text = "tag_" + std::to_string(tag_id);
+    }
+
     return marker;
   }
 
