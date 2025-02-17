@@ -103,7 +103,7 @@ namespace apriltag_ros
     image_transport::Publisher tag_detections_image_publisher_;
     ros::Publisher tag_detections_publisher_;
     ros::Publisher landmarks_publisher_;
-    ros::Publisher april_pose_publisher_;
+    ros::Publisher robot_pose_publisher_;
     ros::Subscriber amcl_pose_subscriber_;
     void amclPoseCallback(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr &msg);
     ros::Publisher amcl_initialpose_publisher_;
@@ -122,6 +122,7 @@ namespace apriltag_ros
     visualization_msgs::MarkerArray tag_poses_list_;
     visualization_msgs::Marker createTagMarker(const int type, const int tag_id, const geometry_msgs::Pose pose);
     visualization_msgs::MarkerArray createTagPosesList(const std::string path);
+    visualization_msgs::MarkerArray createTagPosesList(const std::vector<TagPose2Map> tagPose2Map);
 
   public:
     bool publish_landmarks_;
@@ -132,8 +133,9 @@ namespace apriltag_ros
     std::string map_frame_;
     std::vector<TagPose2Camera> tag_poses_to_camera_;
     std::vector<TagPose2Map> tag_poses_to_map_;
+    std::vector<TagPose2Map> new_tag_poses_to_map_;
     std::string path_to_pose_txt_;
-    bool publish_april_pose_;
+    bool publish_robot_pose_;
     bool enable_write_tags_service_;
 
     AprilTagDetectionArray tag_detection_array_;
