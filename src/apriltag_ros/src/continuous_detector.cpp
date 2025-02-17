@@ -411,7 +411,7 @@ namespace apriltag_ros
               elem.pose.header.stamp = tag_pose_to_camera.header.stamp;
 
               tf::Stamped<tf::Pose> tagPoseToMap, tagPoseToCamera;
-              tf::poseStampedMsgToTF(tag_pose_to_map, tagPoseToMap);
+              tf::poseStampedMsgToTF(elem.pose, tagPoseToMap);
               tf::poseStampedMsgToTF(tag_pose_to_camera, tagPoseToCamera);
               tf::Pose cameraPoseToTag = tagPoseToCamera.inverse();
               tf::Pose cameraPoseToMap = tagPoseToMap * cameraPoseToTag;
@@ -444,7 +444,7 @@ namespace apriltag_ros
             }
           }
 
-          if (!hasFoundTag)
+          if (!hasFound)
           {
             std::string tag_frame = "tag_" + std::to_string(item_id);
             try
@@ -459,7 +459,7 @@ namespace apriltag_ros
             }
 
             geometry_msgs::PoseStamped posestamped;
-            posestamped.header.stamp = item.pose.header;
+            posestamped.header.stamp = item.pose.header.stamp;
             posestamped.header.frame_id = map_frame_;
             posestamped.pose = transformToPose(transform_tagToMap_);
             tag_poses_to_map_.emplace_back(item_id, posestamped);
