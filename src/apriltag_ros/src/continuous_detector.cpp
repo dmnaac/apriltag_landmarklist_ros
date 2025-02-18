@@ -180,7 +180,6 @@ namespace apriltag_ros
     draw_tag_detections_image_ = getAprilTagOption<bool>(pnh, "publish_tag_detections_image", false);
     publish_landmarks_ = getAprilTagOption<bool>(pnh, "publish_landmarks", true);
     publish_robot_pose_ = getAprilTagOption<bool>(pnh, "publish_robot_pose", true);
-    enable_write_tags_service_ = getAprilTagOption<bool>(pnh, "enable_write_tags", false);
     map_frame_ = getAprilTagOption<std::string>(pnh, "map_frame", "map");
     path_to_pose_txt_ = getAprilTagOption<std::string>(pnh, "path_to_pose_txt", "");
     tracking_frame_ = getAprilTagOption<std::string>(pnh, "tracking_frame", "base_link");
