@@ -123,6 +123,7 @@ namespace apriltag_ros
     visualization_msgs::Marker createTagMarker(const int type, const int tag_id, const geometry_msgs::Pose pose);
     visualization_msgs::MarkerArray createTagPosesList(const std::string path);
     visualization_msgs::MarkerArray createTagPosesList(const std::vector<TagPose2Map> tagPose2Map);
+    void appendTagPosesList(const std::vector<TagPose2Map> tagPose2Map);
 
   public:
     bool publish_landmarks_;

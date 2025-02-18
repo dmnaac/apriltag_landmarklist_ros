@@ -100,6 +100,19 @@ namespace apriltag_ros
     return markerarray;
   }
 
+  void ContinuousDetector::appendTagPosesList(const std::vector<TagPose2Map> tagPose2Map)
+  {
+    for (auto item : tagPose2Map)
+    {
+      geometry_msgs::Pose pose;
+      pose = item.pose.pose;
+      tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::ARROW, item.id, pose));
+      pose.position.y = item.pose.pose.position.y + 0.2;
+      pose.position.z = item.pose.pose.position.z + 0.2;
+      tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::TEXT_VIEW_FACING, item_id, pose));
+    }
+  }
+
   /**
    * @brief Create visualization_msgs::MarkerArray object.
    *
@@ -382,96 +395,106 @@ namespace apriltag_ros
           tag_poses_to_map_.emplace_back(item_id, pose_stamp);
         }
       }
+      tag_poses_list_ = createTagPosesList(tag_poses_to_map_);
     }
     else
     {
-      if (tag_detection_array_.detections.size() > 0)
+      for (int i = 0; i < tag_detection_array_.detections.size(); i++)
       {
-        for (int i = 0; i < tag_detection_array_.detections.size(); i++)
-        {
-          AprilTagDetection item = tag_detection_array_.detections[i];
-          int item_id = item.id[0];
-          bool hasFound = false;
+        AprilTagDetection item = tag_detection_array_.detections[i];
+        int item_id = item.id[0];
+        bool hasFound = false;
 
-          if (!tag_detector_->checkIDexists(item_id))
+        if (!tag_detector_->checkIDexists(item_id))
+        {
+          continue;
+        }
+
+        for (auto elem : tag_poses_to_map_)
+        {
+          if (item_id == elem.id)
           {
+            hasFound = true;
+
+            geometry_msgs::PoseStamped tag_pose_to_camera;
+            geometry_msgs::PoseStamped camera_pose_to_map;
+            tag_pose_to_camera.header = item.pose.header;
+            tag_pose_to_camera.pose = item.pose.pose.pose;
+            elem.pose.header.stamp = tag_pose_to_camera.header.stamp;
+
+            tf::Stamped<tf::Pose> tagPoseToMap, tagPoseToCamera;
+            tf::poseStampedMsgToTF(elem.pose, tagPoseToMap);
+            tf::poseStampedMsgToTF(tag_pose_to_camera, tagPoseToCamera);
+            tf::Pose cameraPoseToTag = tagPoseToCamera.inverse();
+            tf::Pose cameraPoseToMap = tagPoseToMap * cameraPoseToTag;
+
+            try
+            {
+              tf_listener_.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(3.0));
+              tf_listener_.lookupTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), transform_cameraToRobot_);
+            }
+            catch (tf::TransformException &ex)
+            {
+              ROS_ERROR("Transform between %s and %s : %s", tracking_frame_.c_str(), item.pose.header.frame_id.c_str(), ex.what());
+              break;
+            }
+
+            tf::Transform robotPoseToMap = cameraPoseToMap * transform_cameraToRobot_.inverse();
+
+            robot_pose_to_map_.header = item.pose.header;
+            robot_pose_to_map_.header.frame_id = map_frame_;
+            robot_pose_to_map_.pose = transformToPose(robotPoseToMap);
+            robot_pose_to_map_.pose.position.z = 0.0;
+            robot_pose_to_map_.pose.orientation.x = 0.0;
+            robot_pose_to_map_.pose.orientation.y = 0.0;
+
+            if (publish_robot_pose_)
+            {
+              robot_pose_publisher_.publish(robot_pose_to_map_);
+            }
+            break;
+          }
+        }
+
+        if (!hasFound)
+        {
+          std::string tag_frame = "tag_" + std::to_string(item_id);
+          try
+          {
+            tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
+            tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap_);
+          }
+          catch (const std::exception &ex)
+          {
+            ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
             continue;
           }
 
-          for (auto elem : tag_poses_to_map_)
+          auto it = std::find_if(new_tag_poses_to_map_.begin(), new_tag_poses_to_map_.end(),
+                                 [item_id](const TagPose2Map &s)
+                                 { return s.id == item_id; });
+
+          if (it != new_tag_poses_to_map_.end())
           {
-            if (item_id == elem.id)
-            {
-              hasFound = true;
-
-              geometry_msgs::PoseStamped tag_pose_to_camera;
-              geometry_msgs::PoseStamped camera_pose_to_map;
-              tag_pose_to_camera.header = item.pose.header;
-              tag_pose_to_camera.pose = item.pose.pose.pose;
-              elem.pose.header.stamp = tag_pose_to_camera.header.stamp;
-
-              tf::Stamped<tf::Pose> tagPoseToMap, tagPoseToCamera;
-              tf::poseStampedMsgToTF(elem.pose, tagPoseToMap);
-              tf::poseStampedMsgToTF(tag_pose_to_camera, tagPoseToCamera);
-              tf::Pose cameraPoseToTag = tagPoseToCamera.inverse();
-              tf::Pose cameraPoseToMap = tagPoseToMap * cameraPoseToTag;
-
-              try
-              {
-                tf_listener_.waitForTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), ros::Duration(3.0));
-                tf_listener_.lookupTransform(tracking_frame_, item.pose.header.frame_id, ros::Time(0), transform_cameraToRobot_);
-              }
-              catch (tf::TransformException &ex)
-              {
-                ROS_ERROR("Transform between %s and %s : %s", tracking_frame_.c_str(), item.pose.header.frame_id.c_str(), ex.what());
-                break;
-              }
-
-              tf::Transform robotPoseToMap = cameraPoseToMap * transform_cameraToRobot_.inverse();
-
-              robot_pose_to_map_.header = item.pose.header;
-              robot_pose_to_map_.header.frame_id = map_frame_;
-              robot_pose_to_map_.pose = transformToPose(robotPoseToMap);
-              robot_pose_to_map_.pose.position.z = 0.0;
-              robot_pose_to_map_.pose.orientation.x = 0.0;
-              robot_pose_to_map_.pose.orientation.y = 0.0;
-
-              if (publish_robot_pose_)
-              {
-                robot_pose_publisher_.publish(robot_pose_to_map_);
-              }
-              break;
-            }
+            it->pose.header.stamp = item.pose.header.stamp;
+            it->pose.pose = transformToPose(transform_tagToMap_);
+            ROS_INFO("New tag (id: %d) has been updated.", item_id);
           }
-
-          if (!hasFound)
+          else
           {
-            std::string tag_frame = "tag_" + std::to_string(item_id);
-            try
-            {
-              tf_listener_.waitForTransform(map_frame_, tag_frame, ros::Time(0), ros::Duration(3.0));
-              tf_listener_.lookupTransform(map_frame_, tag_frame, ros::Time(0), transform_tagToMap_);
-            }
-            catch (const std::exception &ex)
-            {
-              ROS_WARN("Transform between %s and %s : %s", map_frame_.c_str(), tag_frame.c_str(), ex.what());
-              continue;
-            }
-
             geometry_msgs::PoseStamped posestamped;
             posestamped.header.stamp = item.pose.header.stamp;
             posestamped.header.frame_id = map_frame_;
             posestamped.pose = transformToPose(transform_tagToMap_);
-            tag_poses_to_map_.emplace_back(item_id, posestamped);
-
             new_tag_poses_to_map_.emplace_back(item_id, posestamped);
-
             ROS_INFO("New tag (id: %d) has been added.", item_id);
           }
+
+          appendTagPosesList(new_tag_poses_to_map_);
         }
       }
     }
-    tag_poses_list_ = createTagPosesList(tag_poses_to_map_);
+
     tag_poses_list_publisher_.publish(tag_poses_list_);
 
     // Publish detected tags as LandmarkList for Cartographer.
@@ -584,11 +607,25 @@ namespace apriltag_ros
              << item.pose.pose.orientation.y << " "
              << item.pose.pose.orientation.z << " "
              << item.pose.pose.orientation.w << "\n";
+
+        tag_poses_to_map_.emplace_back(item.id, item.pose);
       }
+      new_tag_poses_to_map_.clear();
     }
     else
     {
       for (const TagPose2Map &item : tag_poses_to_map_)
+      {
+        file << item.id << " "
+             << item.pose.pose.position.x << " "
+             << item.pose.pose.position.y << " "
+             << item.pose.pose.position.z << " "
+             << item.pose.pose.orientation.x << " "
+             << item.pose.pose.orientation.y << " "
+             << item.pose.pose.orientation.z << " "
+             << item.pose.pose.orientation.w << "\n";
+      }
+      for (const TagPose2Map &item : new_tag_poses_to_map_)
       {
         file << item.id << " "
              << item.pose.pose.position.x << " "
@@ -622,6 +659,9 @@ namespace apriltag_ros
     if (file.is_open())
     {
       path_to_pose_txt_ = filename;
+      tag_poses_to_map_.clear();
+      tag_poses_list_ = createTagPosesList(path_to_pose_txt_);
+      tag_poses_list_publisher_.publish(tag_poses_list_);
       response.set_state = 1;
       file.close();
       return true;
