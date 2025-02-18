@@ -66,18 +66,18 @@ namespace apriltag_ros
     marker.type = type;
     marker.action = visualization_msgs::Marker::ADD;
     marker.pose = pose;
-    marker.scale.x = 0.2;
-    marker.scale.y = 0.2;
-    marker.scale.z = 0.2;
+    marker.scale.x = 1;
+    marker.scale.y = 0.1;
+    marker.scale.z = 0.1;
     marker.color.a = 1.0;
     marker.color.r = 1.0;
     marker.color.g = 0.0;
     marker.color.b = 0.0;
-    marker.lifetime = ros::Duration();
 
     if (type == 9)
     {
       marker.text = "tag_" + std::to_string(tag_id);
+      marker.scale.z = 0.5;
     }
 
     return marker;
@@ -91,7 +91,7 @@ namespace apriltag_ros
     {
       geometry_msgs::Pose pose;
       pose = item.pose.pose;
-      markerarray.markers.push_back(createTagMarker(visualization_msgs::Marker::SPHERE, item.id, pose));
+      markerarray.markers.push_back(createTagMarker(visualization_msgs::Marker::ARROW, item.id, pose));
       pose.position.y = item.pose.pose.position.y + 0.2;
       pose.position.z = item.pose.pose.position.z + 0.2;
       markerarray.markers.push_back(createTagMarker(visualization_msgs::Marker::TEXT_VIEW_FACING, item.id, pose));
