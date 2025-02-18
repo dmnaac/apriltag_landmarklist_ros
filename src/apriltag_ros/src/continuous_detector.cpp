@@ -663,6 +663,7 @@ namespace apriltag_ros
       tag_poses_list_publisher_.publish(tag_poses_list_);
       response.set_state = 1;
       file.close();
+      ROS_INFO("Path: %s : set successfully.", path_to_pose_txt_.c_str());
       return true;
     }
     else
