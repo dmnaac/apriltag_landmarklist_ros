@@ -109,7 +109,7 @@ namespace apriltag_ros
       tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::ARROW, item.id, pose));
       pose.position.y = item.pose.pose.position.y + 0.2;
       pose.position.z = item.pose.pose.position.z + 0.2;
-      tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::TEXT_VIEW_FACING, item_id, pose));
+      tag_poses_list_.markers.push_back(createTagMarker(visualization_msgs::Marker::TEXT_VIEW_FACING, item.id, pose));
     }
   }
 
